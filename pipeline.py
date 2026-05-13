@@ -20,6 +20,7 @@ import csv
 import json
 import logging
 import os
+import re
 import sys
 import tempfile
 from datetime import datetime
@@ -30,6 +31,7 @@ import yaml
 from extractor import PlacesExtractor
 from enricher import Enricher
 from lead_scorer import LeadScorer
+from analyzer import generate_audit_report
 
 logging.basicConfig(
     level=logging.INFO,
@@ -205,6 +207,9 @@ def run_pipeline(
                         "facebook_url": "",
                         "instagram_handle": "",
                         "linkedin_url": "",
+                        "whatsapp_link": "",
+                        "booking_links": "",
+                        "whatsapp_phone": "",
                         "google_rating": place.get("rating"),
                         "review_count": place.get("total_ratings", 0),
                         "google_type": ", ".join(place.get("types", [])),
@@ -220,14 +225,26 @@ def run_pipeline(
                             if email:
                                 lead["email"] = email
 
-                    # Social media detection from website
+                    # Scan website for social, WhatsApp, booking links
                     if lead["website"]:
-                        social = enricher.detect_social(
-                            lead["website"], name
-                        )
-                        lead["facebook_url"] = social.get("facebook") or ""
-                        lead["instagram_handle"] = social.get("instagram") or ""
-                        lead["linkedin_url"] = social.get("linkedin") or ""
+                        scan = enricher.scan_website(lead["website"], name)
+                        lead["facebook_url"] = scan.get("facebook") or ""
+                        ig = scan.get("instagram") or ""
+                        lead["instagram_handle"] = f"@{ig}" if ig and not ig.startswith("@") else ig
+                        lead["linkedin_url"] = scan.get("linkedin") or ""
+                        lead["whatsapp_link"] = scan.get("whatsapp") or ""
+                        booking = scan.get("booking_links", [])
+                        lead["booking_links"] = " | ".join(booking) if booking else ""
+
+                    # Generate WhatsApp link from phone as fallback
+                    if not lead["whatsapp_link"] and lead["phone"]:
+                        clean = re.sub(r"[^\d+]", "", lead["phone"])
+                        if clean.startswith("+"):
+                            lead["whatsapp_link"] = f"https://wa.me/{clean[1:]}"
+                        else:
+                            lead["whatsapp_link"] = f"https://wa.me/{clean}"
+                    if lead["whatsapp_link"]:
+                        lead["whatsapp_phone"] = lead["phone"]
 
                     # Scoring
                     lead = scorer.score(lead)
@@ -260,9 +277,11 @@ def export_csv(leads: List[Dict], output_path: str):
         "address",
         "city",
         "website",
+        "whatsapp_link",
         "facebook_url",
         "instagram_handle",
         "linkedin_url",
+        "booking_links",
         "google_rating",
         "review_count",
         "lead_score",
@@ -444,6 +463,12 @@ def run_interactive():
         export_html(leads, html_output)
         print(f"  HTML: {html_output}")
 
+    # Offer audit
+    audit_choice = input("\n¿Auditar websites? (s/n, default: s): ").strip().lower()
+    if audit_choice != "n":
+        audit_output = output.replace(".csv", "_audit.html")
+        generate_audit_report(leads, audit_output)
+
     print("\n✅ Listo!")
 
 
@@ -455,6 +480,8 @@ def export_html(leads: List[Dict], output_path: str):
     total = len(leads)
     phones = sum(1 for l in leads if l.get("phone"))
     websites = sum(1 for l in leads if l.get("website"))
+    with_wa = sum(1 for l in leads if l.get("whatsapp_link"))
+    with_booking = sum(1 for l in leads if l.get("booking_links"))
     avg_rating = 0.0
     ratings_n = 0
     for l in leads:
@@ -486,16 +513,29 @@ def export_html(leads: List[Dict], output_path: str):
         website = l.get("website", "")
         ig = l.get("instagram_handle", "")
         fb = l.get("facebook_url", "")
+        wa = l.get("whatsapp_link", "")
+        booking = l.get("booking_links", "")
 
         contact_icons = ""
         if phone:
-            contact_icons += f'<span class="contact-badge phone" title="{phone}">📞</span>'
+            clean_phone = re.sub(r"[^\d+]", "", phone)
+            contact_icons += f'<a href="tel:{clean_phone}" class="contact-badge" title="Llamar: {phone}">📞</a>'
+        if wa:
+            contact_icons += f'<a href="{wa}" target="_blank" class="contact-badge wa" title="WhatsApp: {phone}">💬</a>'
         if website:
-            contact_icons += f'<span class="contact-badge web" title="{website}">🌐</span>'
+            site_url = website if website.startswith("http") else f"https://{website}"
+            contact_icons += f'<a href="{site_url}" target="_blank" class="contact-badge" title="{website}">🌐</a>'
         if ig:
-            contact_icons += f'<span class="contact-badge ig" title="{ig}">📸</span>'
+            ig_clean = ig.lstrip("@")
+            contact_icons += f'<a href="https://instagram.com/{ig_clean}" target="_blank" class="contact-badge" title="Instagram: {ig}">📷</a>'
         if fb:
-            contact_icons += f'<span class="contact-badge fb" title="{fb}">👍</span>'
+            fb_url = fb if "://" in fb else f"https://{fb}"
+            contact_icons += f'<a href="{fb_url}" target="_blank" class="contact-badge" title="Facebook: {fb}">👍</a>'
+
+        booking_badge = ""
+        if booking:
+            first_url = booking.split(" | ")[0]
+            booking_badge = f'<a href="{first_url}" target="_blank" class="booking-badge" title="{booking}">📅</a>'
 
         rows_html += f"""\
 <tr>
@@ -504,6 +544,7 @@ def export_html(leads: List[Dict], output_path: str):
   <td>{l.get("industry", "")}</td>
   <td>{l.get("city", "")}</td>
   <td class="contacts">{contact_icons}</td>
+  <td class="num">{booking_badge}</td>
   <td class="num">{rating}</td>
   <td class="num">{reviews}</td>
   <td><span class="tier" style="background:{bg};color:{color};border:1px solid {color}">{tier}</span></td>
@@ -543,31 +584,34 @@ def export_html(leads: List[Dict], output_path: str):
 <style>
 * {{ margin:0; padding:0; box-sizing:border-box; }}
 body {{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; background:#f8fafc; color:#1e293b; }}
-.container {{ max-width:1280px; margin:0 auto; padding:24px 20px; }}
-.header {{ margin-bottom:32px; }}
+.container {{ max-width:1360px; margin:0 auto; padding:24px 20px; }}
+.header {{ margin-bottom:28px; }}
 .header h1 {{ font-size:28px; font-weight:700; }}
 .header p {{ color:#64748b; margin-top:4px; font-size:14px; }}
-.stats-grid {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:32px; }}
-.stat {{ background:#fff; border-radius:12px; padding:16px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.06); }}
-.stat-value {{ font-size:32px; font-weight:700; }}
-.stat-label {{ font-size:13px; color:#64748b; margin-top:2px; }}
-.cards {{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:32px; }}
+.stats-grid {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin-bottom:28px; }}
+.stat {{ background:#fff; border-radius:12px; padding:14px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.06); }}
+.stat-value {{ font-size:30px; font-weight:700; }}
+.stat-label {{ font-size:12px; color:#64748b; margin-top:2px; }}
+.cards {{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:28px; }}
 @media (max-width:768px) {{ .cards {{ grid-template-columns:1fr; }} }}
 .card {{ background:#fff; border-radius:12px; padding:20px; box-shadow:0 1px 3px rgba(0,0,0,0.06); }}
 .card h3 {{ font-size:15px; font-weight:600; margin-bottom:12px; color:#475569; }}
-.ind-bar {{ display:flex; align-items:center; gap:10px; margin-bottom:8px; }}
+.ind-bar {{ display:flex; align-items:center; gap:10px; margin-bottom:7px; }}
 .ind-name {{ font-size:13px; width:180px; flex-shrink:0; }}
 .ind-track {{ flex:1; height:8px; background:#f1f5f9; border-radius:4px; overflow:hidden; }}
 .ind-fill {{ height:100%; background:#3b82f6; border-radius:4px; transition:width 0.4s; }}
 .ind-count {{ font-size:13px; color:#64748b; width:30px; text-align:right; }}
-.table-wrap {{ background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.06); }}
-table {{ width:100%; border-collapse:collapse; font-size:13px; }}
-th {{ background:#f8fafc; text-align:left; padding:12px 8px; font-weight:600; color:#475569; border-bottom:2px solid #e2e8f0; white-space:nowrap; }}
-td {{ padding:10px 8px; border-bottom:1px solid #f1f5f9; vertical-align:middle; }}
-tr:hover {{ background:#f8fafc; }}
+.table-wrap {{ background:#fff; border-radius:12px; overflow-x:auto; box-shadow:0 1px 3px rgba(0,0,0,0.06); }}
+table {{ width:100%; border-collapse:collapse; font-size:13px; min-width:900px; }}
+th {{ background:#f8fafc; text-align:left; padding:10px 8px; font-weight:600; color:#475569; border-bottom:2px solid #e2e8f0; white-space:nowrap; }}
+td {{ padding:9px 8px; border-bottom:1px solid #f1f5f9; vertical-align:middle; }}
+tr:hover {{ background:#fafafa; }}
 .num {{ text-align:center; }}
 .contacts {{ white-space:nowrap; }}
-.contact-badge {{ cursor:default; font-size:14px; margin-right:2px; }}
+a.contact-badge {{ text-decoration:none; font-size:16px; margin-right:3px; cursor:pointer; opacity:0.8; transition:opacity 0.15s; display:inline-block; }}
+a.contact-badge:hover {{ opacity:1; transform:scale(1.15); }}
+.booking-badge {{ text-decoration:none; font-size:16px; cursor:pointer; opacity:0.7; }}
+.booking-badge:hover {{ opacity:1; }}
 .tier {{ display:inline-block; padding:2px 10px; border-radius:12px; font-size:11px; font-weight:600; }}
 .footer {{ text-align:center; padding:24px; color:#94a3b8; font-size:12px; }}
 </style>
@@ -576,7 +620,7 @@ tr:hover {{ background:#f8fafc; }}
 <div class="container">
   <div class="header">
     <h1>📊 Lead Report</h1>
-    <p>{total} leads extraídos • {now} • {phones} con teléfono • {websites} con web • ⭐ {avg_rating:.1f} promedio</p>
+    <p>{total} leads extraídos • {now} • {phones} con teléfono • {websites} con web • {with_wa} WhatsApp • {with_booking} con reservas • ⭐ {avg_rating:.1f} promedio</p>
   </div>
 
   <div class="stats-grid">
@@ -589,8 +633,16 @@ tr:hover {{ background:#f8fafc; }}
       <div class="stat-label">Con teléfono</div>
     </div>
     <div class="stat">
+      <div class="stat-value" style="color:#25D366">{with_wa}</div>
+      <div class="stat-label">WhatsApp</div>
+    </div>
+    <div class="stat">
       <div class="stat-value" style="color:#3b82f6">{websites}</div>
-      <div class="stat-label">Con website</div>
+      <div class="stat-label">Con web</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value" style="color:#8b5cf6">{with_booking}</div>
+      <div class="stat-label">Sistema reservas</div>
     </div>
     <div class="stat">
       <div class="stat-value" style="color:#f59e0b">{avg_rating:.1f}</div>
@@ -621,6 +673,7 @@ tr:hover {{ background:#f8fafc; }}
           <th>Industria</th>
           <th>Ciudad</th>
           <th>Contacto</th>
+          <th class="num">📅</th>
           <th class="num">⭐</th>
           <th class="num">Reviews</th>
           <th>Tier</th>
@@ -696,7 +749,20 @@ def main():
         "--from-csv",
         help="Path to existing CSV to use with --html",
     )
+    parser.add_argument(
+        "--audit",
+        help="Run website audit on leads CSV and output HTML report",
+    )
     args = parser.parse_args()
+
+    # Audit mode
+    if args.audit:
+        if not args.from_csv:
+            logger.error("--audit requiere --from-csv <archivo.csv>")
+            sys.exit(1)
+        leads = load_leads_from_csv(args.from_csv)
+        generate_audit_report(leads, args.audit)
+        return
 
     # HTML report mode from existing CSV
     if args.from_csv and args.html:

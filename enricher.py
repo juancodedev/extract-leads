@@ -42,15 +42,20 @@ class Enricher:
 
         return None
 
-    def detect_social(self, website: str, business_name: str = "") -> Dict[str, Optional[str]]:
-        """Scan website HTML for social media links.
+    def scan_website(self, website: str, business_name: str = "") -> Dict[str, Optional[str]]:
+        """Scan website HTML for social media, WhatsApp, and booking links.
 
-        Searches in HTML, JSON-LD structured data, and common CMS patterns.
-        Returns dict with facebook, instagram, linkedin keys.
+        Returns dict with: facebook, instagram, linkedin, whatsapp, booking_links.
         """
-        social = {"facebook": None, "instagram": None, "linkedin": None}
+        result = {
+            "facebook": None,
+            "instagram": None,
+            "linkedin": None,
+            "whatsapp": None,
+            "booking_links": [],
+        }
         if not website:
-            return social
+            return result
 
         if not website.startswith("http"):
             website = "https://" + website
@@ -69,7 +74,8 @@ class Enricher:
             )
             html = resp.text
 
-            # Facebook patterns
+            # ── Facebook ──
+            fb_skip = {"share.php", "sharer", "plugins", "tr", "track", "events"}
             fb_patterns = [
                 r'(?:facebook\.com|fb\.com)/([a-zA-Z0-9._-]+)',
                 r'"fb:page_url"\s*:\s*"([^"]+)"',
@@ -79,11 +85,13 @@ class Enricher:
                 m = re.search(p, html)
                 if m:
                     val = m.group(1)
-                    if val and val not in ("share.php", "sharer", "plugins"):
-                        social["facebook"] = val if "facebook.com" in val else f"facebook.com/{val}"
+                    if val and val not in fb_skip and len(val) > 3:
+                        result["facebook"] = val if "facebook.com" in val else f"facebook.com/{val}"
                         break
 
-            # Instagram patterns
+            # ── Instagram ──
+            ig_skip = {"p", "explore", "accounts", "developer", "about",
+                       "rsrc.php", "static", "help", "legal", "terms"}
             ig_patterns = [
                 r'instagram\.com/([a-zA-Z0-9._-]+)',
                 r'"instagram"\s*:\s*"([^"]+)"',
@@ -93,11 +101,11 @@ class Enricher:
                 m = re.search(p, html)
                 if m:
                     val = m.group(1)
-                    if val and val not in ("p", "explore", "accounts", "developer", "about"):
-                        social["instagram"] = f"@{val}" if not val.startswith("@") else val
+                    if val and val not in ig_skip and len(val) > 3:
+                        result["instagram"] = val if not val.startswith("@") else val
                         break
 
-            # LinkedIn patterns
+            # ── LinkedIn ──
             li_patterns = [
                 r'linkedin\.com/(?:company|in)/([a-zA-Z0-9._-]+)',
                 r'"linkedin"\s*:\s*"([^"]+)"',
@@ -105,10 +113,53 @@ class Enricher:
             for p in li_patterns:
                 m = re.search(p, html)
                 if m:
-                    social["linkedin"] = f"linkedin.com/{m.group(1)}"
+                    result["linkedin"] = f"linkedin.com/{m.group(1)}"
                     break
 
-            # Try JSON-LD structured data as fallback
+            # ── WhatsApp ──
+            wa_patterns = [
+                r'wa\.me/(\d+)',
+                r'api\.whatsapp\.com/send\?phone=(\d+)',
+                r'whatsapp\.com/send\?phone=(\d+)',
+                r'whatsapp\.com/c/([a-zA-Z0-9_-]+)',
+            ]
+            for p in wa_patterns:
+                m = re.search(p, html)
+                if m:
+                    phone = m.group(1)
+                    if not phone.startswith("+"):
+                        phone = "+" + phone
+                    result["whatsapp"] = f"https://wa.me/{phone}"
+                    break
+
+            # ── Booking/Reservation Systems ──
+            booking_domains = [
+                "agendapro.com", "setmore.com", "tuu.cl",
+                "calendly.com", "acuityscheduling.com", "reservo.cl",
+                "reservas.cl", "simplybook.me", "bookingsystem",
+                "bookeo.com", "appointmentplus.com", "youcanbook.me",
+                "situdy.com", "reservaenlinea.cl", "turnero.cl",
+                "agendaonline.cl", "timify.com", "superbook",
+                "wix.com/book", "squareup.com/appointments",
+            ]
+            booking_skip = {"terminos", "terms", "condiciones", "conditions",
+                           "privacy", "privacidad", "legal", "aviso-legal",
+                           "cookies", "blog", "faq", "ayuda", "help"}
+            seen_bookings = set()
+            for domain in booking_domains:
+                for m in re.finditer(
+                    r'https?://[^"\'<> ]*' + re.escape(domain) + r'[^"\'<> ]*',
+                    html,
+                ):
+                    url = m.group(0)
+                    url_lower = url.lower()
+                    if any(skip in url_lower for skip in booking_skip):
+                        continue
+                    if url not in seen_bookings:
+                        seen_bookings.add(url)
+                        result["booking_links"].append(url)
+
+            # ── JSON-LD structured data ──
             json_lds = re.findall(
                 r'<script type="application/ld\+json">(.*?)</script>',
                 html,
@@ -121,16 +172,16 @@ class Enricher:
                     for u in urls:
                         u_lower = u.lower()
                         if "facebook.com" in u_lower:
-                            social["facebook"] = u
+                            result["facebook"] = u
                         elif "instagram.com" in u_lower:
-                            social["instagram"] = f"@{u.split('/')[-1]}"
+                            result["instagram"] = u.split("/")[-1]
                         elif "linkedin.com" in u_lower:
-                            social["linkedin"] = u
+                            result["linkedin"] = u
 
         except requests.RequestException as e:
-            logger.debug("Social detection failed for %s: %s", website, e)
+            logger.debug("Website scan failed for %s: %s", website, e)
 
-        return social
+        return result
 
     @staticmethod
     def extract_domain(website: str) -> Optional[str]:
