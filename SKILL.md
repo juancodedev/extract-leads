@@ -1,58 +1,159 @@
 ---
 name: lead-extractor
-description: Extract, qualify, and structure leads from micro-businesses using Google Places API. Use this skill when the user wants to automatically find leads matching configured industries and locations. Supports scoring, enrichment (email via Hunter.io, social media detection), and CSV export. Triggers on: "extract leads", "build lead list", "find prospects", "lead generation", "prospecting".
+description: >
+  Extract, qualify, analyze, and export business leads automatically using Google Places API.
+  Use this skill when the user wants to: find leads, build prospect lists, generate sales leads,
+  scrape business data from Google Maps, qualify leads by score, audit business websites,
+  or create lead reports in CSV/HTML.
+  
+  Triggers on:
+  - "extract leads", "find leads", "get leads", "lead generation", "prospecting"
+  - "find prospects", "build lead list", "scrape businesses", "search businesses"
+  - "audit websites", "analyze websites", "check websites"
+  - "lead report", "lead export", "generate leads"
+  - Any mention of Google Maps + leads/prospects/businesses
 ---
 
 # Lead Extractor Skill
 
-A fully automated skill for finding, qualifying, and exporting business leads via the Google Places API.
+Automatic lead generation for micro-businesses. Searches Google Places, enriches with
+WhatsApp/email/social data, scores leads 0-100, audits websites, and exports CSV + HTML reports.
 
-## Architecture
-
-```
-config.yaml          ← Your business profile (industries, locations, scoring rules)
-extractor.py         ← Google Places API client (text search + details)
-enricher.py          ← Hunter.io email lookup + social media detection from websites
-lead_scorer.py       ← Configurable scoring engine (0-100 pts)
-pipeline.py          ← CLI orchestrator that runs the full flow
-leads_output/        ← Generated CSV exports
-```
-
-## Quick Start
+## 🚀 Quick Start (for the AI to execute)
 
 ```bash
-# 1. Install dependencies
+# 1. Setup
+cd /path/to/lead-extractor
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 
-# 2. Set your Google Places API key
-export GOOGLE_PLACES_API_KEY="your_key_here"
-
-# 3. Run the pipeline
-python pipeline.py
-
-# Output: leads_output/leads.csv with scored leads
+# 2. Ask for API key, then run
+python pipeline.py --interactive
 ```
 
-## How It Works
+## 📋 Workflow — Step by Step
 
-1. **Search** — For each industry keyword × location in `config.yaml`, the extractor queries Google Places Text Search API
-2. **Detail fetch** — Each business result is enriched with phone, website, rating via Place Details API
-3. **Enrich** — If Hunter.io key is set, emails are looked up; website HTML is scanned for social media links
-4. **Score** — Configurable 0-100 rubric applied (digital presence, channels, location, rating)
-5. **Export** — CSV with all fields + score + tier (HOT/WARM/COOL/COLD)
+When the user asks for leads, follow this sequence:
 
-## Configuration
+### STEP 1: Gather Requirements (ask the user)
 
-Edit `config.yaml` to define:
+Ask these questions one at a time:
 
-| Section | What to configure |
-|---------|------------------|
-| `search.industries` | Business types to target + keywords per type |
-| `search.locations` | Cities/regions with premium flag |
-| `scoring.weights` | Point values for each signal (website, social, etc.) |
-| `scoring.tiers` | Score ranges for HOT/WARM/COOL/COLD |
+1. **¿Qué industrias buscas?** (barberías, cafeterías, servicios profesionales, salud y belleza, retail, fitness, educación, limpieza — o especifica las tuyas)
+2. **¿En qué ciudad(es) o región(es)?** (Santiago, Valparaíso, Concepción, o todas)
+3. **¿Cuántos leads quieres?** (default 50-100)
+4. **¿Tienes API key de Google Places?** (si no, guíalos a https://console.cloud.google.com)
+5. **¿Quieres auditar los websites?** (revisa disponibilidad, SEO, booking, imágenes, rendimiento)
+6. **¿Quieres reporte HTML además del CSV?**
 
-## Scoring Rubric
+### STEP 2: Configure & Run
+
+```bash
+# Interactive mode (recommended) — asks everything
+python pipeline.py --interactive
+
+# Or with direct flags:
+export GOOGLE_PLACES_API_KEY="key"
+python pipeline.py --limit 100
+```
+
+### STEP 3: Show Results
+
+After extraction, show the user:
+- Total leads found and by industry
+- How many have phone/website/social
+- HOT/WARM/COOL breakdown
+- Offer to audit websites if not already done
+
+## 📁 Files
+
+| File | Purpose |
+|------|---------|
+| `pipeline.py` | **Main entry point** — extraction, reports, audit, interactive mode |
+| `extractor.py` | Google Places API client |
+| `enricher.py` | WhatsApp/Booking/Social detection from website HTML |
+| `lead_scorer.py` | Configurable 0-100 scoring engine |
+| `analyzer.py` | Website audit (SEO, performance, booking, contact, images, mobile) |
+| `config.yaml` | Industries, locations, scoring weights (editable) |
+| `requirements.txt` | Dependencies: `requests`, `pyyaml` |
+
+## 🎮 CLI Reference (for the AI)
+
+```bash
+# ── Extraction ──────────────────────────────────
+
+# Interactive mode (asks user, then extracts + reports)
+python pipeline.py --interactive
+
+# Quick extraction with defaults (uses config.yaml)
+python pipeline.py --limit 100
+
+# Custom output
+python pipeline.py --output leads.csv --limit 200
+
+# ── Reports ─────────────────────────────────────
+
+# HTML report from existing CSV
+python pipeline.py --from-csv leads.csv --html report.html
+
+# ── Website Audit ───────────────────────────────
+
+# Audit all websites from a CSV
+python pipeline.py --from-csv leads.csv --audit audit.html
+```
+
+## ⚙️ Configuration (`config.yaml`)
+
+The config file defines what to search and how to score:
+
+```yaml
+search:
+  industries:
+    - name: "Barbería y Peluquería"
+      keywords: ["barbería", "barber", "peluquería", "salón de belleza"]
+      bonus_score: 5
+  locations:
+    - city: "Santiago"
+      region: "Metropolitana"
+      premium: true    # gives location bonus in scoring
+
+scoring:
+  base_score: 50
+  max_score: 100
+  weights:
+    website: 15
+    active_social: 20
+    multiple_channels: 10
+    premium_location: 10
+```
+
+The user can edit this, or use `--interactive` to generate it dynamically.
+
+## 🔍 Website Audit (analyzer.py)
+
+When the user wants to check lead quality, run:
+
+```bash
+python pipeline.py --from-csv leads.csv --audit audit.html
+```
+
+This analyzes each website for:
+
+| Category | What it checks |
+|----------|---------------|
+| ✅ Status | HTTP 200, response time, SSL, redirects |
+| 📄 SEO | Title, meta description, OG tags, H1, canonical, schema.org, favicon |
+| 📅 Booking | AgendaPro, Setmore, TUU, Calendly, Acuity + 15 platforms |
+| 🖼️ Images | Count, missing alt attributes, lazy loading |
+| 💬 Contact | WhatsApp button, contact form, email/phone links, social links, Google Maps |
+| 📱 Mobile | Viewport meta, responsive CSS |
+| ⚡ Performance | Gzip, load time, CMS detection |
+| 📝 Content | Word count, CTA, testimonials, blog, prices, gallery |
+
+Each site gets a score (0-100) and a list of actionable improvements.
+
+## 📊 Scoring Rubric
 
 | Signal | Points |
 |--------|--------|
@@ -63,8 +164,54 @@ Edit `config.yaml` to define:
 | Premium location | +10 |
 | High rating (4.5+) | +5 |
 | Industry bonus | +3 to +5 |
-| Owner info available | +5 |
 
-## Output Fields
+**Tiers:** HOT (80-100) → contact now | WARM (60-79) → this week | COOL (40-59) → batch | COLD (<40) → archive
 
-business_name, industry, phone, email, address, city, website, facebook_url, instagram_handle, google_rating, review_count, lead_score, lead_tier, source, date_found
+## 📤 Output
+
+**CSV fields:** business_name, industry, phone, email, address, city, website, whatsapp_link, facebook_url, instagram_handle, booking_links, google_rating, review_count, lead_score, lead_tier, scoring_notes.
+
+**HTML report:** interactive table with clickable phone/WhatsApp/website/Instagram/Facebook links and booking system detection.
+
+**Audit HTML:** per-website scorecards with stats and prioritized improvement list.
+
+## 🔐 Required API Keys
+
+| Key | Required | Get it |
+|-----|----------|--------|
+| `GOOGLE_PLACES_API_KEY` | ✅ Yes | https://console.cloud.google.com (free $200/mo credit) |
+| `HUNTER_API_KEY` | Optional | https://hunter.io (for email enrichment) |
+
+## 🌍 Multi-market
+
+The skill is pre-configured for Chile but works anywhere. To change markets:
+
+1. Edit `config.yaml` → change `locations` to your cities/regions
+2. Change `industries` keywords to local language
+3. Run `python pipeline.py --interactive` or direct
+
+## ❌ Common Errors & Fixes
+
+| Error | Fix |
+|-------|-----|
+| `No module named 'yaml'` | Run `pip install -r requirements.txt` |
+| `No Google Places API key` | Set env var or pass `--google-key` |
+| `ZERO_RESULTS` | Try broader keywords or different location |
+| `REQUEST_DENIED` | API key may not have Places API enabled |
+| Site shows 0ms/0 status | Site may be down; verify manually |
+
+## 📦 Package Structure (for distribution)
+
+```
+lead-extractor/
+├── SKILL.md              ← This file (agent instructions)
+├── pipeline.py           ← Main CLI
+├── extractor.py          ← Google Places search
+├── enricher.py           ← Social/WhatsApp/Booking detection
+├── lead_scorer.py        ← Scoring engine
+├── analyzer.py           ← Website audit
+├── config.yaml           ← User configuration
+├── requirements.txt      ← Python deps
+├── README.md             ← GitHub readme
+└── files/                ← Original reference docs
+```
