@@ -1,103 +1,102 @@
 ---
 name: lead-extractor
 description: >
-  Extract, qualify, analyze, and export business leads automatically using Google Places API.
-  Use this skill when the user wants to: find leads, build prospect lists, generate sales leads,
-  scrape business data from Google Maps, qualify leads by score, audit business websites,
-  or create lead reports in CSV/HTML.
+  Extract, qualify, analyze, and export business leads automatically.
+  Includes advanced audits (SEO, Meta Ads, Business) and Instagram-to-Web conversion.
+  Use this skill for: finding leads, prospecting, competitive analysis, website audits,
+  Meta Ads audits, and building personal brand sites from Instagram.
   
   Triggers on:
-  - "extract leads", "find leads", "get leads", "lead generation", "prospecting"
-  - "find prospects", "build lead list", "scrape businesses", "search businesses"
-  - "audit websites", "analyze websites", "check websites"
-  - "lead report", "lead export", "generate leads"
-  - Any mention of Google Maps + leads/prospects/businesses
+  - "extract leads", "find leads", "prospecting", "find prospects"
+  - "audit website", "SEO audit", "Meta Ads audit", "business audit"
+  - "instagram to web", "brand website", "convert instagram"
+  - "lead report", "lead generation", "analyze business"
 ---
 
-# Lead Extractor Skill
+# Lead Extractor & Business Auditor Skill
 
-Automatic lead generation for micro-businesses. Searches Google Places, enriches with
-WhatsApp/email/social data, scores leads 0-100, audits websites, and exports CSV + HTML reports.
+Advanced lead generation and digital auditing. Searches Google Places, enriches data, scores leads, and performs deep audits (SEO, Ads, Business) to generate high-value reports.
 
-## 🚀 Quick Start (for the AI to execute)
+## 🚀 Capabilities
+
+### 1. Lead Extraction (Multi-Source)
+- **Google Places**: High-volume extraction using API.
+- **Manual Search**: Deep search for specific niches using WebSearch/WebFetch.
+- **Enrichment**: WhatsApp, Social Media, and Hunter.io email detection.
+- **Scoring**: 0-100 opportunity score based on digital gaps.
+
+### 2. Specialized Audits (HTML Reports)
+- **SEO Audit**: Deep technical analysis (Meta tags, Headings, Schema, Speed, Social).
+- **Meta Ads Audit**: Analysis of active ads in Meta Library vs. Landing page coherence.
+- **Business Audit**: Holistic view (Web, Social, Pricing, Offer, Customer Journey, Google Business).
+
+### 3. Personal Brand (Instagram → Web)
+- Converts an Instagram profile into a professional personal brand website.
+- Extracts bio, stats, and recent photos to create a premium landing page.
+
+---
+
+## 📋 Workflows
+
+### 🔍 Workflow A: Lead Generation & Prospecting
+1. **Gather Requirements**: Industry, Location, Volume, and Goal (Selling Web, SEO, Ads, etc.).
+2. **Search**: Use Google Places API for volume. Use WebSearch for niche/directory scraping.
+3. **Analyze**: Check website availability, SEO signals, and social activity.
+4. **Score**: Calculate opportunity score (e.g., higher score if missing web or SEO is poor).
+5. **Report**: Generate CSV and a **Visual HTML Dashboard** with prioritized leads.
+
+### 🛠 Workflow B: Advanced SEO Audit
+1. **Analyze**: Extract meta tags, h1-h6 structure, images/alt, schema, and performance.
+2. **Check**: Verify robots.txt, sitemap.xml, and HTTPS.
+3. **Score**: Grade categories (Meta, Technical, Content, Social).
+4. **Deliver**: HTML file `auditoria-seo-[domain].html` with top 5 prioritized fixes.
+
+### 📢 Workflow C: Meta Ads Audit
+1. **Search**: Find active ads in Meta Ads Library for the business.
+2. **Compare**: Check "Message Match" between Ads and Landing Pages.
+3. **Analyze**: Review copy, creative hooks, and CTA effectiveness.
+4. **Deliver**: HTML file `auditoria-meta-ads-[name].html` with new ad copy suggestions.
+
+### 💼 Workflow D: Digital Business Audit
+1. **Investigate**: Web presence, Social Media activity, and Google Business profile.
+2. **Review**: Analyze product/service offer, pricing consistency, and sales funnel.
+3. **Competitors**: Compare against 1-2 key competitors.
+4. **Deliver**: HTML file `auditoria-negocio-[name].html` with a prioritized action plan.
+
+### 📸 Workflow E: Instagram → Web
+1. **Extract**: Profile info, stats, and top 6-12 post images from Instagram.
+2. **Design**: Create a premium HTML site reflecting the brand's personality.
+3. **Deliver**: `web-[handle].html` with interactive scroll effects and IG-style hero.
+
+---
+
+## 🎮 CLI Reference
 
 ```bash
-# 1. Setup
-cd /path/to/lead-extractor
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-
-# 2. Ask for API key, then run
+# ── Standard Pipeline ───────────────────────────
 python pipeline.py --interactive
+
+# ── SEO Audit ───────────────────────────────────
+# (Use the agent's internal SEO audit logic)
+"Audit SEO for https://example.com"
+
+# ── Meta Ads Audit ──────────────────────────────
+"Audit Meta Ads for [Business Name] and [URL]"
+
+# ── Business Audit ──────────────────────────────
+"Perform a full business audit for [Business Name]"
+
+# ── Instagram to Web ────────────────────────────
+"Convert @handle into a personal brand website"
 ```
 
-## 📋 Workflow — Step by Step
+## 📁 Directory Structure
+- `pipeline.py`: Main orchestration.
+- `analyzer.py`: Technical website analysis.
+- `extractor.py`: Google Places integration.
+- `enricher.py`: Data enrichment (Social/Email).
+- `agents/`: Specialized skill templates (SEO, Ads, Business, IG).
 
-When the user asks for leads, follow this sequence:
-
-### STEP 1: Gather Requirements (ask the user)
-
-Ask these questions one at a time:
-
-1. **¿Qué industrias buscas?** (barberías, cafeterías, servicios profesionales, salud y belleza, retail, fitness, educación, limpieza — o especifica las tuyas)
-2. **¿En qué ciudad(es) o región(es)?** (Santiago, Valparaíso, Concepción, o todas)
-3. **¿Cuántos leads quieres?** (default 50-100)
-4. **¿Tienes API key de Google Places?** (si no, guíalos a https://console.cloud.google.com)
-5. **¿Quieres auditar los websites?** (revisa disponibilidad, SEO, booking, imágenes, rendimiento)
-6. **¿Quieres reporte HTML además del CSV?**
-
-### STEP 2: Configure & Run
-
-```bash
-# Interactive mode (recommended) — asks everything
-python pipeline.py --interactive
-
-# Or with direct flags:
-export GOOGLE_PLACES_API_KEY="key"
-python pipeline.py --limit 100
-```
-
-### STEP 3: Show Results
-
-After extraction, show the user:
-- Total leads found and by industry
-- How many have phone/website/social
-- HOT/WARM/COOL breakdown
-- Offer to audit websites if not already done
-
-## 📁 Files
-
-| File | Purpose |
-|------|---------|
-| `pipeline.py` | **Main entry point** — extraction, reports, audit, interactive mode |
-| `extractor.py` | Google Places API client |
-| `enricher.py` | WhatsApp/Booking/Social detection from website HTML |
-| `lead_scorer.py` | Configurable 0-100 scoring engine |
-| `analyzer.py` | Website audit (SEO, performance, booking, contact, images, mobile) |
-| `config.yaml` | Industries, locations, scoring weights (editable) |
-| `requirements.txt` | Dependencies: `requests`, `pyyaml` |
-
-## 🎮 CLI Reference (for the AI)
-
-```bash
-# ── Extraction ──────────────────────────────────
-
-# Interactive mode (asks user, then extracts + reports)
-python pipeline.py --interactive
-
-# Quick extraction with defaults (uses config.yaml)
-python pipeline.py --limit 100
-
-# Custom output
-python pipeline.py --output leads.csv --limit 200
-
-# ── Reports ─────────────────────────────────────
-
-# HTML report from existing CSV
-python pipeline.py --from-csv leads.csv --html report.html
-
-# ── Website Audit ───────────────────────────────
 
 # Audit all websites from a CSV
 python pipeline.py --from-csv leads.csv --audit audit.html

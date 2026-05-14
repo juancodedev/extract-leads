@@ -127,6 +127,7 @@ def run_pipeline(
     api_key: str,
     hunter_key: str = "",
     limit: int = 0,
+    goal: str = "general",
 ) -> List[Dict]:
     """Execute the full extraction pipeline.
 
@@ -138,7 +139,7 @@ def run_pipeline(
     """
     extractor = PlacesExtractor(api_key)
     enricher = Enricher(hunter_key if hunter_key else None)
-    scorer = LeadScorer(config)
+    scorer = LeadScorer(config, goal=goal)
 
     all_leads: List[Dict] = []
     seen_names: set = set()
@@ -345,11 +346,29 @@ def print_summary(leads: List[Dict]):
 
 def run_interactive():
     """Interactive mode: asks questions, builds config, runs extraction."""
-    print()
-    print("=" * 55)
-    print("  LEAD EXTRACTOR — MODO INTERACTIVO")
-    print("=" * 55)
-    print()
+    print("\n" + "="*55)
+    print(" 🚀 LEAD EXTRACTOR & BUSINESS AUDITOR")
+    print("="*55)
+    print("\n¿Qué quieres hacer hoy?")
+    print("  [1] Extracción de Leads (Google Places + Enrichment)")
+    print("  [2] Auditoría SEO Completa")
+    print("  [3] Auditoría de Meta Ads (Facebook/Instagram)")
+    print("  [4] Auditoría de Negocio Digital (Holística)")
+    print("  [5] Instagram → Web de Marca Personal")
+    
+    choice = input("\nElige una opción (1-5, default: 1): ").strip()
+    
+    if choice in ("2", "3", "4", "5"):
+        print("\n⚠️  Esta funcionalidad avanzada se está integrando.")
+        print("   Por ahora, puedes pedirle directamente al agente:")
+        if choice == "2": print("   > 'Audita el SEO de https://tuweb.com'")
+        if choice == "3": print("   > 'Audita los Meta Ads de [Negocio] en [URL]'")
+        if choice == "4": print("   > 'Haz una auditoría de negocio para [Negocio]'")
+        if choice == "5": print("   > 'Convierte el instagram @handle en una web'")
+        print("\nContinuando con la extracción de leads standard...")
+        choice = "1"
+
+    print("\n--- CONFIGURACIÓN DE EXTRACCIÓN ---")
 
     # API key
     api_key = input("🔑 Google Places API key: ").strip()
@@ -406,6 +425,17 @@ def run_interactive():
     if not chosen_cities:
         chosen_cities = ALL_CITIES
 
+    # Goal
+    print("\n🎯 ¿Cuál es tu objetivo? (Esto ajusta la puntuación):")
+    print("  [1] Vender Diseño Web (puntúa alto si NO tienen web)")
+    print("  [2] Vender SEO (puntúa alto si tienen web pero mal SEO)")
+    print("  [3] Vender Ads (puntúa alto si tienen web y necesitan tráfico)")
+    print("  [4] General (puntúa alto negocios con buena presencia)")
+    goal_choice = input("\nElige una opción (1-4, default: 4): ").strip()
+    
+    goal_map = {"1": "web", "2": "seo", "3": "ads", "4": "general"}
+    goal = goal_map.get(goal_choice, "general")
+
     # Limit
     limit_str = input("\n🔢 ¿Cuántos leads quieres? (default: 100): ").strip()
     try:
@@ -447,7 +477,7 @@ def run_interactive():
     }
 
     # Run
-    leads = run_pipeline(config, api_key, hunter_key, limit)
+    leads = run_pipeline(config, api_key, hunter_key, limit, goal=goal)
 
     if not leads:
         logger.warning("No se encontraron leads. Intenta con más industrias o ciudades.")
@@ -573,6 +603,44 @@ def export_html(leads: List[Dict], output_path: str):
       <div class="ind-count">{count}</div>
     </div>"""
 
+    # Top Opportunities section (Inspired by kit-prospeccion)
+    top_leads = sorted(leads, key=lambda x: x.get("lead_score", 0), reverse=True)[:5]
+    top_html = ""
+    for lead in top_leads:
+        name = html_lib.escape(str(lead.get("business_name", "")))
+        score = lead.get("lead_score", 0)
+        notes = lead.get("scoring_notes", "No notes")
+        phone = lead.get("phone", "")
+        email = lead.get("email", "")
+        
+        # Simple outreach logic
+        msg = f"Hola {name}, he visto tu negocio en Google Maps. "
+        if "No Website" in notes:
+            msg += "He notado que no tienes sitio web, lo que te hace perder visibilidad frente a la competencia..."
+        elif "Poor technical SEO" in notes:
+            msg += "He analizado tu web y tiene algunos fallos técnicos que impiden que aparezcas en los primeros resultados..."
+        else:
+            msg += "Me gusta mucho cómo gestionas tu presencia digital, pero creo que podríamos potenciar aún más tus resultados..."
+
+        top_html += f"""
+    <div class="opportunity-card">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+        <div>
+          <h4 style="font-size:16px; margin-bottom:4px;">{name}</h4>
+          <div style="font-size:12px; color:#64748b; margin-bottom:8px;">{lead.get("industry", "Unknown")} • {lead.get("city", "")}</div>
+        </div>
+        <div class="tier" style="background:{tier_bg.get(lead.get("lead_tier", "COLD"), "rgba(0,0,0,0.05)")}; color:{tier_colors.get(lead.get("lead_tier", "COLD"), "#6b7280")}">
+          Score: {score}
+        </div>
+      </div>
+      <div style="font-size:13px; margin-bottom:12px; padding:8px; background:#f8fafc; border-radius:6px; border-left:4px solid #3b82f6;">
+        <strong>Análisis:</strong> {html_lib.escape(notes)}
+      </div>
+      <div style="background:#f1f5f9; padding:10px; border-radius:6px; font-size:12px; font-style:italic;">
+        <strong>Sugerencia de contacto:</strong> "{msg}"
+      </div>
+    </div>"""
+
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
 
     html = f"""\
@@ -614,6 +682,8 @@ a.contact-badge:hover {{ opacity:1; transform:scale(1.15); }}
 .booking-badge {{ text-decoration:none; font-size:16px; cursor:pointer; opacity:0.7; }}
 .booking-badge:hover {{ opacity:1; }}
 .tier {{ display:inline-block; padding:2px 10px; border-radius:12px; font-size:11px; font-weight:600; }}
+.opportunity-grid {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(350px,1fr)); gap:16px; margin-bottom:28px; }}
+.opportunity-card {{ background:#fff; border-radius:12px; padding:20px; box-shadow:0 1px 3px rgba(0,0,0,0.06); border:1px solid #e2e8f0; }}
 .footer {{ text-align:center; padding:24px; color:#94a3b8; font-size:12px; }}
 </style>
 </head>
@@ -650,6 +720,11 @@ a.contact-badge:hover {{ opacity:1; transform:scale(1.15); }}
       <div class="stat-label">Rating promedio</div>
     </div>
 {tiers_html}
+  </div>
+
+  <h3 style="margin-bottom:16px; font-size:18px;">🔥 Top 5 Oportunidades</h3>
+  <div class="opportunity-grid">
+{top_html}
   </div>
 
   <div class="cards">
@@ -760,6 +835,12 @@ def main():
         "--audit",
         help="Run website audit on leads CSV and output HTML report",
     )
+    parser.add_argument(
+        "--goal",
+        choices=["web", "seo", "ads", "general"],
+        default="general",
+        help="Opportunity goal for scoring (default: general)",
+    )
     args = parser.parse_args()
 
     # Audit mode
@@ -819,7 +900,7 @@ def main():
     print()
 
     # Run
-    leads = run_pipeline(config, api_key, hunter_key, args.limit)
+    leads = run_pipeline(config, api_key, hunter_key, args.limit, goal=args.goal)
 
     if not leads:
         logger.warning("No leads found. Try expanding keywords or locations.")

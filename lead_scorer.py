@@ -8,10 +8,18 @@ from typing import Dict, List, Optional
 
 
 class LeadScorer:
-    """Score and tier leads based on configurable weights and rules."""
+    """Score and tier leads based on opportunity for specific services."""
 
-    def __init__(self, config: Dict):
+    def __init__(self, config: Dict, goal: str = "general"):
+        """
+        Args:
+            config: Configuration dictionary.
+            goal: The service being offered ('web', 'seo', 'ads', 'general').
+                 This affects how the score is calculated (e.g., if goal is 'web',
+                 NOT having a website is a high score).
+        """
         self.config = config
+        self.goal = goal.lower()
         scoring = config.get("scoring", {})
         self.weights = scoring.get("weights", {})
         self.tiers = scoring.get("tiers", {})
@@ -59,15 +67,53 @@ class LeadScorer:
                 notes.append(f"Industry: {ind_name} (+{bonus})")
                 break
 
-        # Digital presence
-        if lead.get("website"):
-            score += self.weights.get("website", 15)
-            notes.append(f"Website (+{self.weights.get('website', 15)})")
+        # Goal-based Opportunity Scoring (Inspired by kit-prospeccion)
+        if self.goal == "web":
+            if not lead.get("website"):
+                score += 40
+                notes.append("No Website: Max opportunity for web design (+40)")
+            else:
+                score -= 10
+                notes.append("Has Website: Lower opportunity for web design (-10)")
+        
+        elif self.goal == "seo":
+            if lead.get("website"):
+                # Basic check: if it has website but no active social
+                if not lead.get("instagram_handle") and not lead.get("facebook_url"):
+                    score += 20
+                    notes.append("Has web but no social: SEO/Marketing opportunity (+20)")
+                
+                # Check for other signals from analyzer if available
+                audit = lead.get("audit_data", {})
+                if audit:
+                    seo = audit.get("seo", {})
+                    if not seo.get("has_meta_description") or not seo.get("has_h1"):
+                        score += 30
+                        notes.append("Poor technical SEO detected (+30)")
+            else:
+                score -= 20
+                notes.append("No website: Cannot sell SEO yet (-20)")
 
-        if lead.get("instagram_handle") or lead.get("facebook_url") or lead.get("linkedin_url"):
-            score += self.weights.get("active_social", 20)
-            notes.append(f"Social media (+{self.weights.get('active_social', 20)})")
+        elif self.goal == "ads":
+            if lead.get("website"):
+                score += 20
+                notes.append("Has web: Ready for Ads traffic (+20)")
+            
+            rating = lead.get("google_rating")
+            if rating and isinstance(rating, (int, float)) and rating < 4.2:
+                score += 15
+                notes.append(f"Rating < 4.2 ({rating}): Needs reputation boost (+15)")
 
+        else: # General quality-based scoring
+            if lead.get("website"):
+                score += self.weights.get("website", 15)
+                notes.append(f"Website (+{self.weights.get('website', 15)})")
+
+            if lead.get("instagram_handle") or lead.get("facebook_url") or lead.get("linkedin_url"):
+                score += self.weights.get("active_social", 20)
+                notes.append(f"Social media (+{self.weights.get('active_social', 20)})")
+
+        # Common signals
         # Multiple contact channels
         channel_fields = [
             "phone", "email", "website",
@@ -86,12 +132,13 @@ class LeadScorer:
             score += extra
             notes.append(f"Premium location (+{extra})")
 
-        # High rating as quality signal
-        rating = lead.get("google_rating")
-        if rating and isinstance(rating, (int, float)) and rating >= 4.5:
-            extra = self.weights.get("pain_points", 15) // 3
-            score += extra
-            notes.append(f"Rating {rating}/5 (+{extra})")
+        # High rating as quality signal (only for general)
+        if self.goal == "general":
+            rating = lead.get("google_rating")
+            if rating and isinstance(rating, (int, float)) and rating >= 4.5:
+                extra = self.weights.get("pain_points", 15) // 3
+                score += extra
+                notes.append(f"Rating {rating}/5 (+{extra})")
 
         # Contact person found
         if lead.get("contact_person"):
@@ -100,7 +147,7 @@ class LeadScorer:
             notes.append(f"Owner info (+{extra})")
 
         # Cap at max and determine tier
-        final_score = min(score, self.max_score)
+        final_score = max(0, min(score, self.max_score))
         tier = self._get_tier(final_score)
 
         return {
