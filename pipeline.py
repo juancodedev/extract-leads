@@ -550,23 +550,25 @@ def export_html(leads: List[Dict], output_path: str):
         contact_icons = ""
         if phone:
             clean_phone = re.sub(r"[^\d+]", "", phone)
-            contact_icons += f'<a href="tel:{html_lib.escape(clean_phone, quote=True)}" class="contact-badge" title="Llamar: {html_lib.escape(phone, quote=True)}">📞</a>'
+            contact_icons += f'<a href="tel:{html_lib.escape(clean_phone, quote=True)}" class="contact-badge" style="color: #475569;" title="Llamar: {html_lib.escape(phone, quote=True)}"><span class="material-icons">phone</span></a>'
         if wa:
-            contact_icons += f'<a href="{html_lib.escape(wa, quote=True)}" target="_blank" class="contact-badge wa" title="WhatsApp: {html_lib.escape(phone, quote=True)}">💬</a>'
+            contact_icons += f'<a href="{html_lib.escape(wa, quote=True)}" target="_blank" class="contact-badge" style="color: #25D366;" title="WhatsApp: {html_lib.escape(phone, quote=True)}"><span class="material-icons">whatsapp</span></a>'
         if website:
             site_url = website if website.startswith("http") else f"https://{website}"
-            contact_icons += f'<a href="{html_lib.escape(site_url, quote=True)}" target="_blank" class="contact-badge" title="{html_lib.escape(website, quote=True)}">🌐</a>'
+            contact_icons += f'<a href="{html_lib.escape(site_url, quote=True)}" target="_blank" class="contact-badge" style="color: #3b82f6;" title="{html_lib.escape(website, quote=True)}"><span class="material-icons">language</span></a>'
         if ig:
             ig_clean = ig.lstrip("@")
-            contact_icons += f'<a href="https://instagram.com/{html_lib.escape(ig_clean, quote=True)}" target="_blank" class="contact-badge" title="Instagram: {html_lib.escape(ig, quote=True)}">📷</a>'
+            contact_icons += f'''<a href="https://instagram.com/{html_lib.escape(ig_clean, quote=True)}" target="_blank" class="contact-badge" style="color: #E1306C;" title="Instagram: {html_lib.escape(ig, quote=True)}">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M7.8 2h8.4C19.4 2 22 4.6 22 7.8v8.4a5.8 5.8 0 0 1-5.8 5.8H7.8C4.6 22 2 19.4 2 16.2V7.8A5.8 5.8 0 0 1 7.8 2m-.2 2A3.6 3.6 0 0 0 4 7.6v8.8A3.6 3.6 0 0 0 7.6 20h8.8a3.6 3.6 0 0 0 3.6-3.6V7.6A3.6 3.6 0 0 0 16.4 4H7.6m9.65 1.5a1.25 1.25 0 0 1 1.25 1.25A1.25 1.25 0 0 1 17.25 8 1.25 1.25 0 0 1 16 6.75a1.25 1.25 0 0 1 1.25-1.25M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3z"/></svg>
+            </a>'''
         if fb:
             fb_url = fb if "://" in fb else f"https://{fb}"
-            contact_icons += f'<a href="{html_lib.escape(fb_url, quote=True)}" target="_blank" class="contact-badge" title="Facebook: {html_lib.escape(fb, quote=True)}">👍</a>'
+            contact_icons += f'<a href="{html_lib.escape(fb_url, quote=True)}" target="_blank" class="contact-badge" style="color: #1877F2;" title="Facebook: {html_lib.escape(fb, quote=True)}"><span class="material-icons">facebook</span></a>'
 
         booking_badge = ""
         if booking:
             first_url = booking.split(" | ")[0]
-            booking_badge = f'<a href="{html_lib.escape(first_url, quote=True)}" target="_blank" class="booking-badge" title="{html_lib.escape(booking, quote=True)}">📅</a>'
+            booking_badge = f'<a href="{html_lib.escape(first_url, quote=True)}" target="_blank" class="booking-badge" style="color: #8b5cf6;" title="{html_lib.escape(booking, quote=True)}"><span class="material-icons">event_available</span></a>'
 
         rows_html += f"""\
 <tr>
@@ -650,6 +652,7 @@ def export_html(leads: List[Dict], output_path: str):
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Lead Report — {total} leads</title>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 <style>
 * {{ margin:0; padding:0; box-sizing:border-box; }}
 body {{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; background:#f8fafc; color:#1e293b; }}
@@ -677,10 +680,11 @@ td {{ padding:9px 8px; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
 tr:hover {{ background:#fafafa; }}
 .num {{ text-align:center; }}
 .contacts {{ white-space:nowrap; }}
-a.contact-badge {{ text-decoration:none; font-size:16px; margin-right:3px; cursor:pointer; opacity:0.8; transition:opacity 0.15s; display:inline-block; }}
-a.contact-badge:hover {{ opacity:1; transform:scale(1.15); }}
-.booking-badge {{ text-decoration:none; font-size:16px; cursor:pointer; opacity:0.7; }}
-.booking-badge:hover {{ opacity:1; }}
+a.contact-badge {{ text-decoration:none; margin-right:6px; cursor:pointer; opacity:0.8; transition:all 0.15s; display:inline-flex; align-items:center; vertical-align:middle; }}
+a.contact-badge:hover {{ opacity:1; transform:scale(1.2); }}
+.material-icons {{ font-size: 20px; }}
+.booking-badge {{ text-decoration:none; cursor:pointer; opacity:0.7; display:inline-flex; align-items:center; vertical-align:middle; }}
+.booking-badge:hover {{ opacity:1; transform:scale(1.2); }}
 .tier {{ display:inline-block; padding:2px 10px; border-radius:12px; font-size:11px; font-weight:600; }}
 .opportunity-grid {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(350px,1fr)); gap:16px; margin-bottom:28px; }}
 .opportunity-card {{ background:#fff; border-radius:12px; padding:20px; box-shadow:0 1px 3px rgba(0,0,0,0.06); border:1px solid #e2e8f0; }}
@@ -690,8 +694,8 @@ a.contact-badge:hover {{ opacity:1; transform:scale(1.15); }}
 <body>
 <div class="container">
   <div class="header">
-    <h1>📊 Lead Report</h1>
-    <p>{total} leads extraídos • {now} • {phones} con teléfono • {websites} con web • {with_wa} WhatsApp • {with_booking} con reservas • ⭐ {avg_rating:.1f} promedio</p>
+    <h1 style="display:flex; align-items:center; gap:10px;"><span class="material-icons" style="font-size:32px; color:#3b82f6;">analytics</span> Lead Report</h1>
+    <p>{total} leads extraídos • {now} • {phones} con teléfono • {websites} con web • {with_wa} WhatsApp • {with_booking} con reservas • {avg_rating:.1f} rating promedio</p>
   </div>
 
   <div class="stats-grid">
@@ -749,8 +753,8 @@ a.contact-badge:hover {{ opacity:1; transform:scale(1.15); }}
           <th>Industria</th>
           <th>Ciudad</th>
           <th>Contacto</th>
-          <th class="num">📅</th>
-          <th class="num">⭐</th>
+          <th class="num"><span class="material-icons" style="font-size:18px;">event_available</span></th>
+          <th class="num"><span class="material-icons" style="font-size:18px;">star</span></th>
           <th class="num">Reviews</th>
           <th>Tier</th>
           <th class="num">Score</th>
