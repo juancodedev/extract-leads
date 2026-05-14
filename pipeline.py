@@ -28,11 +28,16 @@ from datetime import datetime
 from typing import Dict, List
 
 import yaml
+from dotenv import load_dotenv
+
+# Load environment variables from .env.local (preferred) or .env
+load_dotenv(".env.local")
+load_dotenv(".env")
 
 from extractor import PlacesExtractor
 from enricher import Enricher
 from lead_scorer import LeadScorer
-from analyzer import generate_audit_report
+from analyzer import generate_audit_report, WebsiteAnalyzer
 
 logging.basicConfig(
     level=logging.INFO,
@@ -128,18 +133,15 @@ def run_pipeline(
     hunter_key: str = "",
     limit: int = 0,
     goal: str = "general",
+    do_seo: bool = False,
+    do_ads: bool = False,
+    do_ig_web: bool = False,
 ) -> List[Dict]:
-    """Execute the full extraction pipeline.
-
-    For each industry keyword x location pair, searches Google Places,
-    enriches results, and applies scoring.
-
-    Returns:
-        List of scored lead dicts.
-    """
+    """Execute the full extraction pipeline with optional deep audits."""
     extractor = PlacesExtractor(api_key)
     enricher = Enricher(hunter_key if hunter_key else None)
     scorer = LeadScorer(config, goal=goal)
+    analyzer = WebsiteAnalyzer() if do_seo else None
 
     all_leads: List[Dict] = []
     seen_names: set = set()
@@ -265,6 +267,33 @@ def run_pipeline(
                 industry_leads, industry.get("name"),
             )
 
+    # --- DEEP AUDITS FOR TOP LEADS ---
+    if all_leads and (do_seo or do_ads or do_ig_web):
+        # Sort by score and take top 10 for deep audit
+        top_for_audit = sorted(all_leads, key=lambda x: x.get("lead_score", 0), reverse=True)[:10]
+        logger.info("Realizando auditorías profundas para los top 10 prospectos...")
+
+        for lead in top_for_audit:
+            # 1. SEO Audit
+            if do_seo and lead.get("website") and analyzer:
+                logger.info("  Auditando SEO: %s", lead["business_name"])
+                try:
+                    audit_data = analyzer.analyze(lead["website"])
+                    lead["audit_data"] = audit_data
+                    # Re-score with audit data
+                    updated = scorer.score(lead)
+                    lead.update(updated)
+                except Exception as e:
+                    logger.debug("Deep SEO audit failed for %s: %s", lead["business_name"], e)
+
+            # 2. Meta Ads (Flag for Agent/User)
+            if do_ads:
+                lead["requires_ads_audit"] = True
+            
+            # 3. IG to Web (Flag for Agent/User)
+            if do_ig_web and lead.get("instagram_handle"):
+                lead["requires_ig_web_prototype"] = True
+
     return all_leads
 
 
@@ -345,30 +374,11 @@ def print_summary(leads: List[Dict]):
 
 
 def run_interactive():
-    """Interactive mode: asks questions, builds config, runs extraction."""
+    """Interactive mode: asks questions, builds config, and runs the prospecting engine."""
     print("\n" + "="*55)
-    print(" 🚀 LEAD EXTRACTOR & BUSINESS AUDITOR")
+    print(" 🚀 PROSPECTING ENGINE & BUSINESS AUDITOR")
     print("="*55)
-    print("\n¿Qué quieres hacer hoy?")
-    print("  [1] Extracción de Leads (Google Places + Enrichment)")
-    print("  [2] Auditoría SEO Completa")
-    print("  [3] Auditoría de Meta Ads (Facebook/Instagram)")
-    print("  [4] Auditoría de Negocio Digital (Holística)")
-    print("  [5] Instagram → Web de Marca Personal")
-    
-    choice = input("\nElige una opción (1-5, default: 1): ").strip()
-    
-    if choice in ("2", "3", "4", "5"):
-        print("\n⚠️  Esta funcionalidad avanzada se está integrando.")
-        print("   Por ahora, puedes pedirle directamente al agente:")
-        if choice == "2": print("   > 'Audita el SEO de https://tuweb.com'")
-        if choice == "3": print("   > 'Audita los Meta Ads de [Negocio] en [URL]'")
-        if choice == "4": print("   > 'Haz una auditoría de negocio para [Negocio]'")
-        if choice == "5": print("   > 'Convierte el instagram @handle en una web'")
-        print("\nContinuando con la extracción de leads standard...")
-        choice = "1"
-
-    print("\n--- CONFIGURACIÓN DE EXTRACCIÓN ---")
+    print("\n--- CONFIGURACIÓN DE BÚSQUEDA ---")
 
     # API key
     api_key = input("🔑 Google Places API key: ").strip()
@@ -378,7 +388,7 @@ def run_interactive():
         logger.error("Se necesita una API key de Google Places")
         sys.exit(1)
 
-    hunter_key = input("🔑 Hunter.io API key (opcional, para emails): ").strip()
+    hunter_key = input("🔑 Hunter.io API key (opcional): ").strip()
     if not hunter_key:
         hunter_key = os.environ.get("HUNTER_API_KEY", "")
 
@@ -427,17 +437,26 @@ def run_interactive():
 
     # Goal
     print("\n🎯 ¿Cuál es tu objetivo? (Esto ajusta la puntuación):")
-    print("  [1] Vender Diseño Web (puntúa alto si NO tienen web)")
-    print("  [2] Vender SEO (puntúa alto si tienen web pero mal SEO)")
-    print("  [3] Vender Ads (puntúa alto si tienen web y necesitan tráfico)")
-    print("  [4] General (puntúa alto negocios con buena presencia)")
+    print("  [1] Vender Diseño Web (oportunidad si NO tienen web)")
+    print("  [2] Vender SEO (oportunidad si tienen web pero mal SEO)")
+    print("  [3] Vender Ads (oportunidad si tienen web y necesitan tráfico)")
+    print("  [4] General (calidad de presencia digital)")
     goal_choice = input("\nElige una opción (1-4, default: 4): ").strip()
-    
     goal_map = {"1": "web", "2": "seo", "3": "ads", "4": "general"}
     goal = goal_map.get(goal_choice, "general")
 
+    # --- ADVANCED AUDIT OPTIONS ---
+    print("\n🛠  AUDITORÍAS ADICIONALES (Para los mejores prospectos):")
+    do_seo = input("  ¿Realizar auditoría SEO técnica profunda? (s/n, default: s): ").strip().lower() != "n"
+    do_ads = input("  ¿Analizar anuncios en Meta Ads Library? (s/n, default: n): ").strip().lower() == "s"
+    do_ig_web = input("  ¿Generar prototipo Instagram → Web? (s/n, default: n): ").strip().lower() == "s"
+
     # Limit
-    limit_str = input("\n🔢 ¿Cuántos leads quieres? (default: 100): ").strip()
+    limit_str = input("\n🔢 ¿Cuántos leads quieres extraer? (default: 100): ").strip()
+    try:
+        limit = int(limit_str) if limit_str else 100
+    except ValueError:
+        limit = 100
     try:
         limit = int(limit_str) if limit_str else 100
     except ValueError:
@@ -477,7 +496,10 @@ def run_interactive():
     }
 
     # Run
-    leads = run_pipeline(config, api_key, hunter_key, limit, goal=goal)
+    leads = run_pipeline(
+        config, api_key, hunter_key, limit, 
+        goal=goal, do_seo=do_seo, do_ads=do_ads, do_ig_web=do_ig_web
+    )
 
     if not leads:
         logger.warning("No se encontraron leads. Intenta con más industrias o ciudades.")
@@ -624,12 +646,22 @@ def export_html(leads: List[Dict], output_path: str):
         else:
             msg += "Me gusta mucho cómo gestionas tu presencia digital, pero creo que podríamos potenciar aún más tus resultados..."
 
+        # Specialized audit badges
+        audit_badges = ""
+        if lead.get("audit_data"):
+            audit_badges += '<span class="tier" style="background:rgba(59,130,246,0.1); color:#3b82f6; border:1px solid #3b82f6; margin-right:4px;">SEO Auditado</span>'
+        if lead.get("requires_ads_audit"):
+            audit_badges += '<span class="tier" style="background:rgba(139,92,246,0.1); color:#8b5cf6; border:1px solid #8b5cf6; margin-right:4px;">Meta Ads Ready</span>'
+        if lead.get("requires_ig_web_prototype"):
+            audit_badges += '<span class="tier" style="background:rgba(225,48,108,0.1); color:#E1306C; border:1px solid #E1306C; margin-right:4px;">IG-to-Web Ready</span>'
+
         top_html += f"""
     <div class="opportunity-card">
       <div style="display:flex; justify-content:space-between; align-items:flex-start;">
         <div>
           <h4 style="font-size:16px; margin-bottom:4px;">{name}</h4>
           <div style="font-size:12px; color:#64748b; margin-bottom:8px;">{lead.get("industry", "Unknown")} • {lead.get("city", "")}</div>
+          <div style="margin-bottom:8px;">{audit_badges}</div>
         </div>
         <div class="tier" style="background:{tier_bg.get(lead.get("lead_tier", "COLD"), "rgba(0,0,0,0.05)")}; color:{tier_colors.get(lead.get("lead_tier", "COLD"), "#6b7280")}">
           Score: {score}
@@ -845,6 +877,21 @@ def main():
         default="general",
         help="Opportunity goal for scoring (default: general)",
     )
+    parser.add_argument(
+        "--seo",
+        action="store_true",
+        help="Enable deep SEO audits for top prospects",
+    )
+    parser.add_argument(
+        "--ads",
+        action="store_true",
+        help="Mark top prospects for Meta Ads audit",
+    )
+    parser.add_argument(
+        "--ig-web",
+        action="store_true",
+        help="Mark top prospects for Instagram-to-Web prototype",
+    )
     args = parser.parse_args()
 
     # Audit mode
@@ -874,12 +921,11 @@ def main():
     # API keys
     api_key = args.google_key or os.environ.get("GOOGLE_PLACES_API_KEY", "")
     if not api_key:
-        logger.error(
-            "No Google Places API key found.\n"
-            "  Set GOOGLE_PLACES_API_KEY environment variable or\n"
-            "  pass --google-key <key>"
-        )
-        sys.exit(1)
+        print("\n🔑 No se detectó GOOGLE_PLACES_API_KEY en .env o variables de entorno.")
+        api_key = input("Introduce tu API Key de Google Places (o presiona Enter para cancelar): ").strip()
+        if not api_key:
+            logger.error("Se requiere la API Key de Google Places para continuar.")
+            sys.exit(1)
 
     hunter_key = args.hunter_key or os.environ.get("HUNTER_API_KEY", "")
     if hunter_key:
@@ -904,7 +950,10 @@ def main():
     print()
 
     # Run
-    leads = run_pipeline(config, api_key, hunter_key, args.limit, goal=args.goal)
+    leads = run_pipeline(
+        config, api_key, hunter_key, args.limit, 
+        goal=args.goal, do_seo=args.seo, do_ads=args.ads, do_ig_web=args.ig_web
+    )
 
     if not leads:
         logger.warning("No leads found. Try expanding keywords or locations.")

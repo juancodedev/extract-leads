@@ -6,3 +6,4 @@ __pycache__/
 dist/
 build/
 leads_output/
+.env.local
