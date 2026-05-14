@@ -3,7 +3,7 @@ Website analyzer for leads - checks availability, SEO, booking systems,
 images, performance, and generates actionable improvement suggestions.
 """
 import logging
-import html
+import html as html_lib
 import os
 import re
 import time
@@ -615,15 +615,15 @@ def _generate_html(results: List[Dict], output_path: str, total_leads: int, audi
         for imp in improvements[:12]:
             icon = imp[:2] if len(imp) > 2 else "•"
             bg = score_bg.get(icon, "#f8fafc")
-            defs_html += f'<span class="def" style="background:{bg}">{html.escape(str(imp))}</span>\n'
+            defs_html += f'<span class="def" style="background:{bg}">{html_lib.escape(str(imp))}</span>\n'
 
         cards += f"""\
     <div class="card">
       <div class="card-header">
         <div>
-          <div class="card-title">{html.escape(name)}</div>
-          <div class="card-url"><a href="{html.escape(url, quote=True)}" target="_blank">{html.escape(url[:60])}</a></div>
-          <div class="card-meta">{html.escape(str(r.get('industry', '') or ''))} · {html.escape(str(r.get('city', '') or ''))} · {html.escape(str(r.get('phone', '') or ''))}</div>
+          <div class="card-title">{html_lib.escape(name)}</div>
+          <div class="card-url"><a href="{html_lib.escape(url, quote=True)}" target="_blank">{html_lib.escape(url[:60])}</a></div>
+          <div class="card-meta">{html_lib.escape(str(r.get('industry', '') or ''))} · {html_lib.escape(str(r.get('city', '') or ''))} · {html_lib.escape(str(r.get('phone', '') or ''))}</div>
         </div>
         <div class="card-score" style="color:{score_color}">{score}</div>
       </div>
@@ -631,12 +631,12 @@ def _generate_html(results: List[Dict], output_path: str, total_leads: int, audi
       <div class="card-stats">
         <div class="cs"><span class="cs-v" style="color:{status_color}">{status_emoji}</span><span class="cs-l">{code} · {rt}ms</span></div>
         <div class="cs"><span class="cs-v">{'🔒' if ssl else '🔓'}</span><span class="cs-l">{'HTTPS' if ssl else 'No SSL'}</span></div>
-        <div class="cs"><span class="cs-v">📅</span><span class="cs-l">{html.escape(booking_str)}</span></div>
-        <div class="cs"><span class="cs-v">🖼️</span><span class="cs-l">{html.escape(imgs_html)}</span></div>
+        <div class="cs"><span class="cs-v">📅</span><span class="cs-l">{html_lib.escape(booking_str)}</span></div>
+        <div class="cs"><span class="cs-v">🖼️</span><span class="cs-l">{html_lib.escape(imgs_html)}</span></div>
         <div class="cs"><span class="cs-v">📱</span><span class="cs-l">{'Responsive' if mobile.get('has_viewport') else 'No responsive'}</span></div>
-        <div class="cs"><span class="cs-v">🏗️</span><span class="cs-l">{html.escape(tech)}</span></div>
+        <div class="cs"><span class="cs-v">🏗️</span><span class="cs-l">{html_lib.escape(tech)}</span></div>
         <div class="cs"><span class="cs-v">📞</span><span class="cs-l">{contact_icons if contact_icons else 'Sin contacto'}</span></div>
-        <div class="cs"><span class="cs-v">📄</span><span class="cs-l">{html.escape(str(seo.get('title', 'Sin title') or 'Sin title')[:40])}</span></div>
+        <div class="cs"><span class="cs-v">📄</span><span class="cs-l">{html_lib.escape(str(seo.get('title', 'Sin title') or 'Sin title')[:40])}</span></div>
       </div>
 
       <div class="card-section">Mejoras detectadas</div>
