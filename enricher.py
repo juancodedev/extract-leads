@@ -126,9 +126,7 @@ class Enricher:
             for p in wa_patterns:
                 m = re.search(p, html)
                 if m:
-                    phone = m.group(1)
-                    if not phone.startswith("+"):
-                        phone = "+" + phone
+                    phone = re.sub(r"\D", "", m.group(1))
                     result["whatsapp"] = f"https://wa.me/{phone}"
                     break
 

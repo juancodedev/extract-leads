@@ -17,6 +17,7 @@ Usage:
 """
 import argparse
 import csv
+import html as html_lib
 import json
 import logging
 import os
@@ -509,46 +510,46 @@ def export_html(leads: List[Dict], output_path: str):
         score = l.get("lead_score", 0)
         rating = l.get("google_rating", "")
         reviews = l.get("review_count", "")
-        phone = l.get("phone", "")
-        website = l.get("website", "")
-        ig = l.get("instagram_handle", "")
-        fb = l.get("facebook_url", "")
-        wa = l.get("whatsapp_link", "")
-        booking = l.get("booking_links", "")
+        phone = str(l.get("phone", "") or "")
+        website = str(l.get("website", "") or "")
+        ig = str(l.get("instagram_handle", "") or "")
+        fb = str(l.get("facebook_url", "") or "")
+        wa = str(l.get("whatsapp_link", "") or "")
+        booking = str(l.get("booking_links", "") or "")
 
         contact_icons = ""
         if phone:
             clean_phone = re.sub(r"[^\d+]", "", phone)
-            contact_icons += f'<a href="tel:{clean_phone}" class="contact-badge" title="Llamar: {phone}">📞</a>'
+            contact_icons += f'<a href="tel:{html_lib.escape(clean_phone, quote=True)}" class="contact-badge" title="Llamar: {html_lib.escape(phone, quote=True)}">📞</a>'
         if wa:
-            contact_icons += f'<a href="{wa}" target="_blank" class="contact-badge wa" title="WhatsApp: {phone}">💬</a>'
+            contact_icons += f'<a href="{html_lib.escape(wa, quote=True)}" target="_blank" class="contact-badge wa" title="WhatsApp: {html_lib.escape(phone, quote=True)}">💬</a>'
         if website:
             site_url = website if website.startswith("http") else f"https://{website}"
-            contact_icons += f'<a href="{site_url}" target="_blank" class="contact-badge" title="{website}">🌐</a>'
+            contact_icons += f'<a href="{html_lib.escape(site_url, quote=True)}" target="_blank" class="contact-badge" title="{html_lib.escape(website, quote=True)}">🌐</a>'
         if ig:
             ig_clean = ig.lstrip("@")
-            contact_icons += f'<a href="https://instagram.com/{ig_clean}" target="_blank" class="contact-badge" title="Instagram: {ig}">📷</a>'
+            contact_icons += f'<a href="https://instagram.com/{html_lib.escape(ig_clean, quote=True)}" target="_blank" class="contact-badge" title="Instagram: {html_lib.escape(ig, quote=True)}">📷</a>'
         if fb:
             fb_url = fb if "://" in fb else f"https://{fb}"
-            contact_icons += f'<a href="{fb_url}" target="_blank" class="contact-badge" title="Facebook: {fb}">👍</a>'
+            contact_icons += f'<a href="{html_lib.escape(fb_url, quote=True)}" target="_blank" class="contact-badge" title="Facebook: {html_lib.escape(fb, quote=True)}">👍</a>'
 
         booking_badge = ""
         if booking:
             first_url = booking.split(" | ")[0]
-            booking_badge = f'<a href="{first_url}" target="_blank" class="booking-badge" title="{booking}">📅</a>'
+            booking_badge = f'<a href="{html_lib.escape(first_url, quote=True)}" target="_blank" class="booking-badge" title="{html_lib.escape(booking, quote=True)}">📅</a>'
 
         rows_html += f"""\
 <tr>
   <td class="num">{i}</td>
-  <td><strong>{l.get("business_name", "")}</strong></td>
-  <td>{l.get("industry", "")}</td>
-  <td>{l.get("city", "")}</td>
+  <td><strong>{html_lib.escape(str(l.get("business_name", "") or ""))}</strong></td>
+  <td>{html_lib.escape(str(l.get("industry", "") or ""))}</td>
+  <td>{html_lib.escape(str(l.get("city", "") or ""))}</td>
   <td class="contacts">{contact_icons}</td>
   <td class="num">{booking_badge}</td>
-  <td class="num">{rating}</td>
-  <td class="num">{reviews}</td>
+  <td class="num">{html_lib.escape(str(rating or ""))}</td>
+  <td class="num">{html_lib.escape(str(reviews or ""))}</td>
   <td><span class="tier" style="background:{bg};color:{color};border:1px solid {color}">{tier}</span></td>
-  <td class="num"><strong>{score}</strong></td>
+  <td class="num"><strong>{html_lib.escape(str(score or ""))}</strong></td>
 </tr>"""
 
     tiers_html = ""
@@ -567,7 +568,7 @@ def export_html(leads: List[Dict], output_path: str):
         pct = count * 100 // total
         ind_html += f"""\
     <div class="ind-bar">
-      <div class="ind-name">{ind_name}</div>
+      <div class="ind-name">{html_lib.escape(str(ind_name))}</div>
       <div class="ind-track"><div class="ind-fill" style="width:{pct}%"></div></div>
       <div class="ind-count">{count}</div>
     </div>"""
@@ -704,7 +705,13 @@ a.contact-badge:hover {{ opacity:1; transform:scale(1.15); }}
 def load_leads_from_csv(path: str) -> List[Dict]:
     """Load leads from a previously exported CSV."""
     with open(path, "r", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
+        sample = f.read(4096)
+        f.seek(0)
+        try:
+            dialect = csv.Sniffer().sniff(sample, delimiters=",;")
+        except csv.Error:
+            dialect = csv.excel
+        reader = csv.DictReader(f, dialect=dialect)
         return list(reader)
 
 
