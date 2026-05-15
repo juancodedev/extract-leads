@@ -559,6 +559,9 @@ def run_interactive():
 
 def export_html(leads: List[Dict], output_path: str):
     """Generate a clean HTML report from leads data."""
+    # Sort leads by score descending
+    leads = sorted(leads, key=lambda x: x.get("lead_score", 0), reverse=True)
+    
     tiers_count = {}
     industries_count = {}
     total = len(leads)
@@ -659,7 +662,7 @@ def export_html(leads: List[Dict], output_path: str):
     </div>"""
 
     # Top Opportunities section (Inspired by kit-prospeccion)
-    top_leads = sorted(leads, key=lambda x: x.get("lead_score", 0), reverse=True)[:5]
+    top_leads = leads[:5]
     top_html = ""
     for lead in top_leads:
         name = html_lib.escape(str(lead.get("business_name", "")))
@@ -751,6 +754,11 @@ a.contact-badge:hover {{ opacity:1; transform:scale(1.2); }}
 .tier {{ display:inline-block; padding:2px 10px; border-radius:12px; font-size:11px; font-weight:600; }}
 .opportunity-grid {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(350px,1fr)); gap:16px; margin-bottom:28px; }}
 .opportunity-card {{ background:#fff; border-radius:12px; padding:20px; box-shadow:0 1px 3px rgba(0,0,0,0.06); border:1px solid #e2e8f0; }}
+.ranking-legend {{ background:#fff; border-radius:12px; padding:20px; margin-bottom:28px; box-shadow:0 1px 3px rgba(0,0,0,0.06); border-left:4px solid #3b82f6; }}
+.ranking-legend h3 {{ font-size:16px; margin-bottom:10px; color:#1e293b; }}
+.ranking-legend p {{ font-size:13px; color:#64748b; line-height:1.5; margin-bottom:12px; }}
+.tier-legend {{ display:flex; gap:12px; flex-wrap:wrap; }}
+.tier-item {{ display:flex; align-items:center; gap:6px; font-size:12px; }}
 .footer {{ text-align:center; padding:24px; color:#94a3b8; font-size:12px; }}
 </style>
 </head>
@@ -787,6 +795,17 @@ a.contact-badge:hover {{ opacity:1; transform:scale(1.2); }}
       <div class="stat-label">Rating promedio</div>
     </div>
 {tiers_html}
+  </div>
+
+  <div class="ranking-legend">
+    <h3>¿Qué significa el Ranking?</h3>
+    <p>El <strong>Lead Score</strong> (0-100) mide el potencial de conversión y la necesidad de servicios digitales. Se calcula analizando la presencia de sitio web, redes sociales activas, canales de contacto, ubicación premium y deficiencias técnicas que representan una oportunidad de venta.</p>
+    <div class="tier-legend">
+      <div class="tier-item"><span class="tier" style="background:{tier_bg['HOT']}; color:{tier_colors['HOT']}; border:1px solid {tier_colors['HOT']}">HOT (80-100)</span> <span>Alta prioridad: Necesidad crítica o encaje perfecto.</span></div>
+      <div class="tier-item"><span class="tier" style="background:{tier_bg['WARM']}; color:{tier_colors['WARM']}; border:1px solid {tier_colors['WARM']}">WARM (60-79)</span> <span>Interés alto: Buen prospecto con margen de mejora.</span></div>
+      <div class="tier-item"><span class="tier" style="background:{tier_bg['COOL']}; color:{tier_colors['COOL']}; border:1px solid {tier_colors['COOL']}">COOL (40-59)</span> <span>Interés medio: Requiere más trabajo de educación.</span></div>
+      <div class="tier-item"><span class="tier" style="background:{tier_bg['COLD']}; color:{tier_colors['COLD']}; border:1px solid {tier_colors['COLD']}">COLD (0-39)</span> <span>Baja prioridad: Poco encaje o ya bien servido.</span></div>
+    </div>
   </div>
 
   <h3 style="margin-bottom:16px; font-size:18px;">🔥 Top 5 Oportunidades</h3>

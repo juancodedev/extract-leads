@@ -509,7 +509,9 @@ def generate_audit_report(leads: List[Dict], output_path: str):
     """Run website analysis on all leads with websites and generate HTML report."""
     analyzer = WebsiteAnalyzer()
     total = len(leads)
+    # Sort leads by score before auditing if they have a score
     with_website = [l for l in leads if l.get("website")]
+    with_website = sorted(with_website, key=lambda x: x.get("lead_score", 0), reverse=True)
 
     print(f"\n🔍 Auditing {len(with_website)}/{total} websites...\n")
 
@@ -523,6 +525,10 @@ def generate_audit_report(leads: List[Dict], output_path: str):
         analysis["industry"] = lead.get("industry", "")
         analysis["city"] = lead.get("city", "")
         analysis["phone"] = lead.get("phone", "")
+        # Preserve lead score and tier if available
+        analysis["lead_score"] = lead.get("lead_score", 0)
+        analysis["lead_tier"] = lead.get("lead_tier", "COLD")
+        
         status_icon = "✅" if analysis.get("status") == "ok" else "❌"
         print(f"{status_icon} {analysis.get('response_time_ms', 0)}ms | {analysis.get('status_code', 0)}")
         results.append(analysis)
@@ -532,6 +538,9 @@ def generate_audit_report(leads: List[Dict], output_path: str):
 
 def _generate_html(results: List[Dict], output_path: str, total_leads: int, audited: int):
     """Generate the audit HTML report."""
+    # Already sorted by generate_audit_report, but ensuring it here too
+    results = sorted(results, key=lambda x: (x.get("lead_score", 0), x.get("business_name", "")), reverse=True)
+    
     ok_sites = sum(1 for r in results if r.get("status") == "ok")
     error_sites = sum(1 for r in results if r.get("error"))
     avg_rt = 0
@@ -575,30 +584,36 @@ def _generate_html(results: List[Dict], output_path: str, total_leads: int, audi
         status_emoji = "✅" if status == "ok" else ("⚠️" if code else "❌")
         status_color = "#22c55e" if status == "ok" else ("#f59e0b" if code else "#ef4444")
 
-        # Score calculation
-        score = 50
-        if status == "ok": score += 15
-        if ssl: score += 5
-        if rt < 1500: score += 5
-        if seo.get("has_title"): score += 4
-        if seo.get("has_meta_description"): score += 4
-        if seo.get("has_og_title"): score += 3
-        if seo.get("has_canonical"): score += 2
-        if seo.get("has_h1"): score += 3
-        if seo.get("has_favicon"): score += 2
-        if seo.get("has_schema_org"): score += 3
-        if images.get("total", 0) > 0: score += 3
-        if images.get("without_alt", 0) == 0 and images.get("total", 0) > 0: score += 3
-        if images.get("has_lazy_loading"): score += 2
-        if mobile.get("has_viewport"): score += 4
-        if contact.get("has_whatsapp"): score += 4
-        if contact.get("has_contact_form"): score += 3
-        if content.get("has_cta"): score += 3
-        if content.get("has_testimonials"): score += 2
-        if booking.get("has_booking"): score += 3
-        score = min(score, 100)
+        # Score calculation (Technical Score)
+        tech_score = 50
+        if status == "ok": tech_score += 15
+        if ssl: tech_score += 5
+        if rt < 1500: tech_score += 5
+        if seo.get("has_title"): tech_score += 4
+        if seo.get("has_meta_description"): tech_score += 4
+        if seo.get("has_og_title"): tech_score += 3
+        if seo.get("has_canonical"): tech_score += 2
+        if seo.get("has_h1"): tech_score += 3
+        if seo.get("has_favicon"): tech_score += 2
+        if seo.get("has_schema_org"): tech_score += 3
+        if images.get("total", 0) > 0: tech_score += 3
+        if images.get("without_alt", 0) == 0 and images.get("total", 0) > 0: tech_score += 3
+        if images.get("has_lazy_loading"): tech_score += 2
+        if mobile.get("has_viewport"): tech_score += 4
+        if contact.get("has_whatsapp"): tech_score += 4
+        if contact.get("has_contact_form"): tech_score += 3
+        if content.get("has_cta"): tech_score += 3
+        if content.get("has_testimonials"): tech_score += 2
+        if booking.get("has_booking"): tech_score += 3
+        tech_score = min(tech_score, 100)
 
-        score_color = "#22c55e" if score >= 80 else ("#f59e0b" if score >= 50 else "#ef4444")
+        tech_score_color = "#22c55e" if tech_score >= 80 else ("#f59e0b" if tech_score >= 50 else "#ef4444")
+        
+        # Lead Score (from original prospecting)
+        lead_score = r.get("lead_score", 0)
+        lead_tier = r.get("lead_tier", "COLD")
+        tier_colors = {"HOT": "#ef4444", "WARM": "#f59e0b", "COOL": "#3b82f6", "COLD": "#6b7280"}
+        lead_color = tier_colors.get(lead_tier, "#6b7280")
 
         imgs_html = f"{images.get('total', 0)} imágenes"
         if images.get("without_alt", 0) > 0:
@@ -621,11 +636,14 @@ def _generate_html(results: List[Dict], output_path: str, total_leads: int, audi
     <div class="card">
       <div class="card-header">
         <div>
-          <div class="card-title">{html_lib.escape(name)}</div>
+          <div class="card-title">{html_lib.escape(name)} <span style="font-size:12px; font-weight:normal; color:{lead_color}; border:1px solid {lead_color}; padding:1px 6px; border-radius:10px; margin-left:8px;">{lead_tier} Lead ({lead_score})</span></div>
           <div class="card-url"><a href="{html_lib.escape(url, quote=True)}" target="_blank">{html_lib.escape(url[:60])}</a></div>
           <div class="card-meta">{html_lib.escape(str(r.get('industry', '') or ''))} · {html_lib.escape(str(r.get('city', '') or ''))} · {html_lib.escape(str(r.get('phone', '') or ''))}</div>
         </div>
-        <div class="card-score" style="color:{score_color}">{score}</div>
+        <div style="text-align:right;">
+          <div class="card-score" style="color:{tech_score_color}">{tech_score}</div>
+          <div style="font-size:10px; color:#94a3b8; font-weight:600; text-transform:uppercase;">Web Score</div>
+        </div>
       </div>
 
       <div class="card-stats">
@@ -664,6 +682,9 @@ body {{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-seri
 .stats-bar {{ display:flex; gap:12px; margin-bottom:28px; flex-wrap:wrap; }}
 .stat-pill {{ background:#fff; padding:10px 18px; border-radius:30px; font-size:14px; box-shadow:0 1px 3px rgba(0,0,0,0.06); }}
 .stat-pill strong {{ font-size:18px; }}
+.ranking-legend {{ background:#fff; border-radius:14px; padding:20px; margin-bottom:20px; box-shadow:0 1px 3px rgba(0,0,0,0.06); border-left:4px solid #3b82f6; }}
+.ranking-legend h3 {{ font-size:16px; margin-bottom:10px; color:#1e293b; }}
+.ranking-legend p {{ font-size:13px; color:#64748b; line-height:1.5; }}
 .card {{ background:#fff; border-radius:14px; padding:20px; margin-bottom:14px; box-shadow:0 1px 3px rgba(0,0,0,0.06); }}
 .card-header {{ display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:12px; }}
 .card-title {{ font-size:17px; font-weight:600; }}
@@ -696,6 +717,11 @@ body {{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-seri
     <span class="stat-pill">⏱️ <strong>{avg_rt}</strong>ms promedio</span>
     <span class="stat-pill">📅 <strong>{sum(1 for r in results if r.get('booking', {}).get('has_booking'))}</strong> con reservas</span>
     <span class="stat-pill">💬 <strong>{sum(1 for r in results if r.get('contact', {}).get('has_whatsapp'))}</strong> WhatsApp</span>
+  </div>
+
+  <div class="ranking-legend">
+    <h3>¿Cómo leer esta auditoría?</h3>
+    <p>Los leads están ordenados por su <strong>Lead Score</strong> (potencial de negocio). El <strong>Web Score</strong> (0-100) evalúa la salud técnica actual del sitio. Una discrepancia (Lead Score alto + Web Score bajo) representa la oportunidad perfecta para una venta de servicios de optimización o rediseño.</p>
   </div>
 
 {cards}

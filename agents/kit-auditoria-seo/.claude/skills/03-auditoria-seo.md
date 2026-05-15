@@ -142,6 +142,7 @@ Genera un único archivo HTML autocontenido con todo el informe. Libertad creati
 ### Contenido obligatorio del dashboard
 
 1. **Header** — URL auditada, fecha de la auditoría, puntuación global en un elemento visual grande y claro. Color según resultado: verde (80+), amarillo (50-79), rojo (<50).
+   - **Lead Ranking**: Si este sitio forma parte de un proceso de prospección, incluye de forma destacada el **Lead Score** y el **Ranking** del prospecto para dar contexto de su potencial de negocio. Explica brevemente que el Lead Score mide el encaje comercial mientras que el SEO Score mide la salud técnica.
 
 2. **Resumen ejecutivo** — 4 tarjetas:
    - Puntuación global

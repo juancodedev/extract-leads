@@ -217,6 +217,7 @@ Dashboard visual. Libertad creativa total en diseño.
    - 60-79: "Campaña funcional — hay margen de mejora significativo"
    - 40-59: "Campaña con problemas — correcciones necesarias"
    - 0-39: "Campaña no optimizada — rediseño recomendado"
+   - **Lead Ranking**: Si este negocio forma parte de un proceso de prospección, incluye de forma destacada el **Lead Score** y el **Ranking** del prospecto para dar contexto de su potencial de negocio. Explica que el Lead Score mide el encaje comercial mientras que el Ads Score mide la optimización técnica de sus campañas.
 
 2. **Resumen de anuncios encontrados** — Cuántos ads activos, desde cuándo, qué formatos, qué mensajes. Vista rápida de todos los anuncios.
 

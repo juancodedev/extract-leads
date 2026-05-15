@@ -221,6 +221,7 @@ Dashboard ejecutivo visual. Libertad creativa total en diseño.
    - Reputación
    - Coherencia de Marca
    - Competencia (si aplica)
+   - **Lead Ranking**: Si este negocio forma parte de un proceso de prospección, incluye de forma destacada el **Lead Score** y el **Ranking** del prospecto para dar contexto de su potencial de negocio. Explica que el Lead Score mide el encaje comercial mientras que el Business Score mide la madurez de su estrategia digital actual.
 
 2. **Resumen ejecutivo** — 3 párrafos máximo:
    - Estado actual (dónde está)
