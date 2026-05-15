@@ -87,6 +87,26 @@ AVAILABLE_INDUSTRIES = {
         "keywords": ["tutoría", "clases", "profesor", "academia", "reforzamiento"],
         "bonus_score": 3,
     },
+    "9": {
+        "name": "Automotriz",
+        "keywords": ["taller mecánico", "repuestos", "vulcanización", "car wash", "servicio técnico automotriz", "mecánica"],
+        "bonus_score": 4,
+    },
+    "10": {
+        "name": "Mascotas",
+        "keywords": ["veterinaria", "peluquería canina", "pet shop", "clínica veterinaria", "alimento mascotas"],
+        "bonus_score": 4,
+    },
+    "11": {
+        "name": "Turismo y Hotelería",
+        "keywords": ["hotel", "hostal", "turismo", "agencia de viajes", "cabañas", "alojamiento"],
+        "bonus_score": 4,
+    },
+    "12": {
+        "name": "Inmobiliaria y Construcción",
+        "keywords": ["propiedades", "corredora", "construcción", "arquitecto", "remodelación", "gasfitería", "electricista"],
+        "bonus_score": 5,
+    },
 }
 
 ALL_CITIES = [
@@ -394,13 +414,24 @@ def run_interactive():
 
     # Industries
     print("\n📋 Industrias disponibles:")
-    for key, ind in AVAILABLE_INDUSTRIES.items():
+    for key, ind in sorted(AVAILABLE_INDUSTRIES.items(), key=lambda x: int(x[0])):
         print(f"  [{key}] {ind['name']}")
+    print(f"  [{len(AVAILABLE_INDUSTRIES)+1}] Otra industria (especificar)")
+    
     selected = input("\n¿Qué industrias? (ej: 1,2,3 o 'todas'): ").strip()
+    
+    chosen_industries = []
     if selected.lower() in ("todas", "all", "*"):
         chosen_industries = list(AVAILABLE_INDUSTRIES.values())
+    elif selected == str(len(AVAILABLE_INDUSTRIES) + 1):
+        custom_name = input("  Nombre de la industria: ").strip()
+        custom_kws = input("  Palabras clave (separadas por coma): ").strip().split(",")
+        chosen_industries.append({
+            "name": custom_name,
+            "keywords": [k.strip() for k in custom_kws],
+            "bonus_score": 5
+        })
     else:
-        chosen_industries = []
         for s in selected.split(","):
             s = s.strip()
             if s in AVAILABLE_INDUSTRIES:
