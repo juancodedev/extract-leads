@@ -11,7 +11,9 @@ from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
-import requests
+import asyncio
+
+import aiohttp
 from jinja2 import Environment, FileSystemLoader
 
 from booking_data import BOOKING_DOMAINS, BOOKING_SKIP
@@ -57,22 +59,15 @@ jinja_env = Environment(loader=FileSystemLoader(TEMPLATE_DIR), autoescape=True)
 class WebsiteAnalyzer:
     """Analyze a business website for quality signals and improvements."""
 
-    def __init__(self, timeout: int = 15, config: Optional[Dict] = None):
+    def __init__(self, session: aiohttp.ClientSession, timeout: int = 15, config: Optional[Dict] = None):
+        self.session = session
         self.timeout = timeout
-        self.session = requests.Session()
+        self._sem = asyncio.Semaphore(10)
         sc_cfg = (config or {}).get("scoring", {}).get("thresholds", {})
         self.slow_threshold = sc_cfg.get("slow_ms", SLOW_THRESHOLD_MS)
         self.warn_threshold = sc_cfg.get("warn_ms", WARN_THRESHOLD_MS)
-        self.session.headers.update({
-            "User-Agent": (
-                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/120.0.0.0 Safari/537.36"
-            ),
-            "Accept-Language": "es-CL,es;q=0.9,en;q=0.8",
-        })
 
-    def analyze(self, url: str) -> Dict:
+    async def analyze(self, url: str) -> Dict:
         """Run full analysis on a website URL."""
         result = {
             "url": url,
@@ -97,31 +92,34 @@ class WebsiteAnalyzer:
 
         start = time.time()
         try:
-            resp = self.session.get(clean_url, timeout=self.timeout, allow_redirects=True)
+            async with self._sem:
+                async with self.session.get(
+                    clean_url,
+                    timeout=aiohttp.ClientTimeout(total=self.timeout),
+                    allow_redirects=True,
+                ) as resp:
+                    html = await resp.text()
+                    elapsed = int((time.time() - start) * 1000)
+
+                    result["status"] = "ok" if resp.status == 200 else "warning"
+                    result["status_code"] = resp.status
+                    result["response_time_ms"] = elapsed
+                    result["ssl"] = clean_url.startswith("https")
+                    result["redirects"] = len(resp.history)
+                    result["final_url"] = str(resp.url)
+
+                    result.update(self._analyze_html(html, clean_url))
+                    result.update(self._analyze_headers(resp.headers))
+                    result["improvements"] = self._generate_improvements(result)
+
+        except (aiohttp.ClientError, asyncio.TimeoutError) as e:
             elapsed = int((time.time() - start) * 1000)
+            if isinstance(e, asyncio.TimeoutError):
+                result["error"] = f"Timeout after {self.timeout}s"
+                result["response_time_ms"] = elapsed
+            else:
+                result["error"] = str(e)[:100]
 
-            result["status"] = "ok" if resp.status_code == 200 else "warning"
-            result["status_code"] = resp.status_code
-            result["response_time_ms"] = elapsed
-            result["ssl"] = clean_url.startswith("https")
-            result["redirects"] = len(resp.history)
-            result["final_url"] = resp.url
-            result["html"] = resp.text
-            result["headers"] = dict(resp.headers)
-
-            result.update(self._analyze_html(resp.text, clean_url))
-            result.update(self._analyze_headers(resp.headers))
-            result["improvements"] = self._generate_improvements(result)
-
-        except requests.ConnectionError:
-            result["error"] = "Connection error - site may be down"
-        except requests.Timeout:
-            result["error"] = f"Timeout after {self.timeout}s"
-        except requests.RequestException as e:
-            result["error"] = str(e)[:100]
-
-        result.pop("html", None)
-        result.pop("headers", None)
         return result
 
     def _clean_url(self, url: str) -> str:
@@ -500,35 +498,35 @@ class WebsiteAnalyzer:
         return improvements
 
 
-def generate_audit_report(leads: List[Dict], output_path: str):
+async def generate_audit_report(leads: List[Dict], output_path: str):
     """Run website analysis on all leads with websites and generate HTML report."""
-    analyzer = WebsiteAnalyzer()
-    total = len(leads)
-    # Sort leads by score before auditing if they have a score
-    with_website = [l for l in leads if l.get("website")]
-    with_website = sorted(with_website, key=lambda x: x.get("lead_score", 0), reverse=True)
+    connector = aiohttp.TCPConnector(limit=10, ttl_dns_cache=300)
+    async with aiohttp.ClientSession(connector=connector) as session:
+        analyzer = WebsiteAnalyzer(session)
+        total = len(leads)
+        with_website = [l for l in leads if l.get("website")]
+        with_website = sorted(with_website, key=lambda x: x.get("lead_score", 0), reverse=True)
 
-    print(f"\n🔍 Auditing {len(with_website)}/{total} websites...\n")
+        print(f"\n🔍 Auditing {len(with_website)}/{total} websites...\n")
 
-    results = []
-    for i, lead in enumerate(with_website, 1):
-        url = lead["website"]
-        name = lead.get("business_name", "")
-        print(f"  [{i}/{len(with_website)}] {name[:40]:40s} ... ", end="", flush=True)
-        analysis = analyzer.analyze(url)
-        analysis["business_name"] = name
-        analysis["industry"] = lead.get("industry", "")
-        analysis["city"] = lead.get("city", "")
-        analysis["phone"] = lead.get("phone", "")
-        # Preserve lead score and tier if available
-        analysis["lead_score"] = lead.get("lead_score", 0)
-        analysis["lead_tier"] = lead.get("lead_tier", "COLD")
-        
-        status_icon = "✅" if analysis.get("status") == "ok" else "❌"
-        print(f"{status_icon} {analysis.get('response_time_ms', 0)}ms | {analysis.get('status_code', 0)}")
-        results.append(analysis)
+        results = []
+        for i, lead in enumerate(with_website, 1):
+            url = lead["website"]
+            name = lead.get("business_name", "")
+            print(f"  [{i}/{len(with_website)}] {name[:40]:40s} ... ", end="", flush=True)
+            analysis = await analyzer.analyze(url)
+            analysis["business_name"] = name
+            analysis["industry"] = lead.get("industry", "")
+            analysis["city"] = lead.get("city", "")
+            analysis["phone"] = lead.get("phone", "")
+            analysis["lead_score"] = lead.get("lead_score", 0)
+            analysis["lead_tier"] = lead.get("lead_tier", "COLD")
+            
+            status_icon = "✅" if analysis.get("status") == "ok" else "❌"
+            print(f"{status_icon} {analysis.get('response_time_ms', 0)}ms | {analysis.get('status_code', 0)}")
+            results.append(analysis)
 
-    _generate_html(results, output_path, total, len(with_website))
+        _generate_html(results, output_path, total, len(with_website))
 
 
 def _generate_html(results: List[Dict], output_path: str, total_leads: int, audited: int):

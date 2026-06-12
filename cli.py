@@ -2,6 +2,7 @@
 CLI entry point for the Lead Extractor pipeline.
 """
 import argparse
+import asyncio
 import logging
 import os
 import sys
@@ -23,7 +24,7 @@ from analyzer import generate_audit_report
 logger = logging.getLogger(__name__)
 
 
-def main():
+async def main():
     parser = argparse.ArgumentParser(
         description="Lead Extractor - Automated lead finding via Google Places API"
     )
@@ -97,7 +98,7 @@ def main():
             logger.error("--audit requiere --from-csv <archivo.csv>")
             sys.exit(1)
         leads = load_leads_from_csv(args.from_csv)
-        generate_audit_report(leads, args.audit)
+        await generate_audit_report(leads, args.audit)
         return
 
     # HTML report mode from existing CSV
@@ -147,7 +148,7 @@ def main():
     print()
 
     # Run
-    leads = run_pipeline(
+    leads = await run_pipeline(
         config, api_key, hunter_key, args.limit,
         goal=args.goal, do_seo=args.seo, do_ads=args.ads, do_ig_web=args.ig_web
     )
@@ -316,10 +317,10 @@ def run_interactive():
     }
 
     # Run
-    leads = run_pipeline(
+    leads = asyncio.run(run_pipeline(
         config, api_key, hunter_key, limit,
         goal=goal, do_seo=do_seo, do_ads=do_ads, do_ig_web=do_ig_web
-    )
+    ))
 
     if not leads:
         logger.warning("No se encontraron leads. Intenta con más industrias o ciudades.")
@@ -346,6 +347,6 @@ def run_interactive():
     audit_choice = input("\n¿Auditar websites? (s/n, default: s): ").strip().lower()
     if audit_choice != "n":
         audit_output = output.replace(".csv", "_audit.html")
-        generate_audit_report(leads, audit_output)
+        asyncio.run(generate_audit_report(leads, audit_output))
 
     print("\n✅ Listo!")

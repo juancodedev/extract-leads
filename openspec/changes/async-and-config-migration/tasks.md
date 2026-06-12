@@ -35,9 +35,9 @@ Chain strategy: stacked-to-main
 
 ## D2: Async aiohttp (depends on D1)
 
-- [ ] 2.1 **requirements.txt** — Add `aiohttp>=3.9.0` (~+1 line)
-- [ ] 2.2 **extractor.py** — `requests` → `aiohttp`; `_request()`, `_get_place_details()`, `search_businesses()` → async; add `session` param + `Semaphore(5)`; `time.sleep()` → `asyncio.sleep()` (~+45 lines)
-- [ ] 2.3 **enricher.py** — `requests` → `aiohttp`; `find_email()`, `scan_website()` → async; add `session` param + `Semaphore(3)` (~+35 lines)
-- [ ] 2.4 **analyzer.py** — `requests.Session` → injected `aiohttp.ClientSession`; `analyze()` → async; add `Semaphore(10)`; `generate_audit_report()` stays sync but awaits async `analyze()` (~+35 lines)
-- [ ] 2.5 **pipeline.py** — `run_pipeline()` → async; create `ClientSession` via `async with`; inject into constructors; use `asyncio.gather(return_exceptions=True)` for parallel enrichment + audits (~+35 lines)
-- [ ] 2.6 **cli.py** — `main()` → `async def`; wrap entry point with `asyncio.run()`; `run_interactive()` → async (~+15 lines)
+- [x] 2.1 **requirements.txt** — Add `aiohttp>=3.9.0` (~+1 line)
+- [x] 2.2 **extractor.py** — `requests` → `aiohttp`; `_request()`, `_get_place_details()`, `search_businesses()` → async; add `session` param + `Semaphore(5)`; `time.sleep()` → `asyncio.sleep()` (~+45 lines)
+- [x] 2.3 **enricher.py** — `requests` → `aiohttp`; `find_email()`, `scan_website()` → async; add `session` param + `Semaphore(3)` (~+35 lines)
+- [x] 2.4 **analyzer.py** — `requests.Session` → injected `aiohttp.ClientSession`; `analyze()` → async; add `Semaphore(10)`; `generate_audit_report()` stays sync but awaits async `analyze()` (~+35 lines)
+- [x] 2.5 **pipeline.py** — `run_pipeline()` → async; create `ClientSession` via `async with`; inject into constructors; use `asyncio.gather(return_exceptions=True)` for parallel enrichment + audits (~+35 lines)
+- [x] 2.6 **cli.py** — `main()` → `async def`; wrap entry point with `asyncio.run()`; `run_interactive()` → async (~+15 lines)

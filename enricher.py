@@ -1,11 +1,12 @@
 """
 Email and social media enrichment for leads.
 """
+import asyncio
 import logging
 import re
 from typing import Dict, Optional
 
-import requests
+import aiohttp
 
 from booking_data import BOOKING_DOMAINS, BOOKING_SKIP
 
@@ -23,35 +24,41 @@ class Enricher:
     Social detection: parses website HTML for known social URLs.
     """
 
-    def __init__(self, hunter_api_key: Optional[str] = None, config: Optional[Dict] = None):
+    def __init__(self, hunter_api_key: Optional[str] = None, session: Optional[aiohttp.ClientSession] = None, config: Optional[Dict] = None):
         self.hunter_api_key = hunter_api_key
+        self.session = session
+        self._hunter_sem = asyncio.Semaphore(3)
+        self._web_sem = asyncio.Semaphore(10)
         env_cfg = (config or {}).get("enrichment", {})
         self.hunter_timeout = env_cfg.get("hunter_timeout", HUNTER_TIMEOUT)
         self.website_scan_timeout = env_cfg.get("website_scan_timeout", WEBSITE_SCAN_TIMEOUT)
 
-    def find_email(self, domain: str) -> Optional[str]:
+    async def find_email(self, domain: str) -> Optional[str]:
         """Find email address for a domain using Hunter.io."""
-        if not self.hunter_api_key or not domain:
+        if not self.hunter_api_key or not domain or not self.session:
             return None
 
         url = "https://api.hunter.io/v2/domain-search"
         params = {"domain": domain, "api_key": self.hunter_api_key}
 
-        try:
-            resp = requests.get(url, params=params, timeout=self.hunter_timeout)
-            resp.raise_for_status()
-            data = resp.json()
-            emails = data.get("data", {}).get("emails", [])
-            if emails:
-                for email in emails:
-                    if email.get("value"):
-                        return email["value"]
-        except requests.RequestException as e:
-            logger.debug("Hunter.io lookup failed for %s: %s", domain, e)
+        async with self._hunter_sem:
+            try:
+                async with self.session.get(
+                    url, params=params,
+                    timeout=aiohttp.ClientTimeout(total=self.hunter_timeout),
+                ) as resp:
+                    data = await resp.json()
+                    emails = data.get("data", {}).get("emails", [])
+                    if emails:
+                        for email in emails:
+                            if email.get("value"):
+                                return email["value"]
+            except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+                logger.debug("Hunter.io lookup failed for %s: %s", domain, e)
 
         return None
 
-    def scan_website(self, website: str, business_name: str = "") -> Dict[str, Optional[str]]:
+    async def scan_website(self, website: str, business_name: str = "") -> Dict[str, Optional[str]]:
         """Scan website HTML for social media, WhatsApp, and booking links.
 
         Returns dict with: facebook, instagram, linkedin, whatsapp, booking_links.
@@ -63,25 +70,30 @@ class Enricher:
             "whatsapp": None,
             "booking_links": [],
         }
-        if not website:
+        if not website or not self.session:
             return result
 
         if not website.startswith("http"):
             website = "https://" + website
 
-        try:
-            resp = requests.get(
-                website,
-                timeout=self.website_scan_timeout,
-                headers={
+        async with self._web_sem:
+            try:
+                headers = {
                     "User-Agent": (
                         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
                         "AppleWebKit/537.36 (KHTML, like Gecko) "
                         "Chrome/120.0.0.0 Safari/537.36"
                     )
-                },
-            )
-            html = resp.text
+                }
+                async with self.session.get(
+                    website,
+                    timeout=aiohttp.ClientTimeout(total=self.website_scan_timeout),
+                    headers=headers,
+                ) as resp:
+                    html = await resp.text()
+            except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+                logger.debug("Website scan failed for %s: %s", website, e)
+                return result
 
             # ── Facebook ──
             fb_skip = {"share.php", "sharer", "plugins", "tr", "track", "events"}
@@ -172,9 +184,6 @@ class Enricher:
                             result["instagram"] = u.split("/")[-1]
                         elif "linkedin.com" in u_lower:
                             result["linkedin"] = u
-
-        except requests.RequestException as e:
-            logger.debug("Website scan failed for %s: %s", website, e)
 
         return result
 
