@@ -11,6 +11,10 @@ from booking_data import BOOKING_DOMAINS, BOOKING_SKIP
 
 logger = logging.getLogger(__name__)
 
+HUNTER_TIMEOUT = 10
+WEBSITE_SCAN_TIMEOUT = 10
+MIN_HANDLE_LENGTH = 3
+
 
 class Enricher:
     """Enrich leads with emails (via Hunter.io) and social media links.
@@ -31,7 +35,7 @@ class Enricher:
         params = {"domain": domain, "api_key": self.hunter_api_key}
 
         try:
-            resp = requests.get(url, params=params, timeout=10)
+            resp = requests.get(url, params=params, timeout=HUNTER_TIMEOUT)
             resp.raise_for_status()
             data = resp.json()
             emails = data.get("data", {}).get("emails", [])
@@ -65,7 +69,7 @@ class Enricher:
         try:
             resp = requests.get(
                 website,
-                timeout=10,
+                timeout=WEBSITE_SCAN_TIMEOUT,
                 headers={
                     "User-Agent": (
                         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -87,7 +91,7 @@ class Enricher:
                 m = re.search(p, html)
                 if m:
                     val = m.group(1)
-                    if val and val not in fb_skip and len(val) > 3:
+                    if val and val not in fb_skip and len(val) > MIN_HANDLE_LENGTH:
                         result["facebook"] = val if "facebook.com" in val else f"facebook.com/{val}"
                         break
 
@@ -103,7 +107,7 @@ class Enricher:
                 m = re.search(p, html)
                 if m:
                     val = m.group(1)
-                    if val and val not in ig_skip and len(val) > 3:
+                    if val and val not in ig_skip and len(val) > MIN_HANDLE_LENGTH:
                         result["instagram"] = val if not val.startswith("@") else val
                         break
 

@@ -10,6 +10,10 @@ import requests
 
 logger = logging.getLogger(__name__)
 
+MAX_PAGES = 3
+PAGE_TOKEN_DELAY = 2  # seconds
+REQUEST_TIMEOUT = 15  # seconds
+
 
 class PlacesExtractor:
     """Search for businesses using Google Places API.
@@ -50,7 +54,7 @@ class PlacesExtractor:
         }
 
         pages = 0
-        while pages < 3:
+        while pages < MAX_PAGES:
             resp = self._request("/textsearch/json", params)
             if resp is None:
                 break
@@ -98,7 +102,7 @@ class PlacesExtractor:
                 break
 
             params["pagetoken"] = next_token
-            time.sleep(2)
+            time.sleep(PAGE_TOKEN_DELAY)
             pages += 1
 
         return results
@@ -124,7 +128,7 @@ class PlacesExtractor:
             resp = requests.get(
                 f"{self.BASE_URL}{endpoint}",
                 params=params,
-                timeout=15,
+                timeout=REQUEST_TIMEOUT,
             )
             resp.raise_for_status()
             return resp

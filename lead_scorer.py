@@ -6,6 +6,16 @@ Returns the lead with lead_score, lead_tier, and scoring_notes added.
 """
 from typing import Dict, List, Optional
 
+WEB_NO_SITE_BONUS = 40
+WEB_HAS_SITE_PENALTY = -10
+SEO_NO_SOCIAL_BONUS = 20
+SEO_POOR_TECH_BONUS = 30
+SEO_NO_SITE_PENALTY = -20
+ADS_HAS_SITE_BONUS = 20
+ADS_LOW_RATING_BONUS = 15
+ADS_LOW_RATING_THRESHOLD = 4.2
+GENERAL_HIGH_RATING_THRESHOLD = 4.5
+
 
 class LeadScorer:
     """Score and tier leads based on opportunity for specific services."""
@@ -70,17 +80,17 @@ class LeadScorer:
         # Goal-based Opportunity Scoring (Inspired by kit-prospeccion)
         if self.goal == "web":
             if not lead.get("website"):
-                score += 40
+                score += WEB_NO_SITE_BONUS
                 notes.append("No Website: Max opportunity for web design (+40)")
             else:
-                score -= 10
+                score += WEB_HAS_SITE_PENALTY
                 notes.append("Has Website: Lower opportunity for web design (-10)")
         
         elif self.goal == "seo":
             if lead.get("website"):
                 # Basic check: if it has website but no active social
                 if not lead.get("instagram_handle") and not lead.get("facebook_url"):
-                    score += 20
+                    score += SEO_NO_SOCIAL_BONUS
                     notes.append("Has web but no social: SEO/Marketing opportunity (+20)")
                 
                 # Check for other signals from analyzer if available
@@ -88,20 +98,20 @@ class LeadScorer:
                 if audit:
                     seo = audit.get("seo", {})
                     if not seo.get("has_meta_description") or not seo.get("has_h1"):
-                        score += 30
+                        score += SEO_POOR_TECH_BONUS
                         notes.append("Poor technical SEO detected (+30)")
             else:
-                score -= 20
+                score += SEO_NO_SITE_PENALTY
                 notes.append("No website: Cannot sell SEO yet (-20)")
 
         elif self.goal == "ads":
             if lead.get("website"):
-                score += 20
+                score += ADS_HAS_SITE_BONUS
                 notes.append("Has web: Ready for Ads traffic (+20)")
             
             rating = lead.get("google_rating")
-            if rating and isinstance(rating, (int, float)) and rating < 4.2:
-                score += 15
+            if rating and isinstance(rating, (int, float)) and rating < ADS_LOW_RATING_THRESHOLD:
+                score += ADS_LOW_RATING_BONUS
                 notes.append(f"Rating < 4.2 ({rating}): Needs reputation boost (+15)")
 
         else: # General quality-based scoring
@@ -135,7 +145,7 @@ class LeadScorer:
         # High rating as quality signal (only for general)
         if self.goal == "general":
             rating = lead.get("google_rating")
-            if rating and isinstance(rating, (int, float)) and rating >= 4.5:
+            if rating and isinstance(rating, (int, float)) and rating >= GENERAL_HIGH_RATING_THRESHOLD:
                 extra = self.weights.get("pain_points", 15) // 3
                 score += extra
                 notes.append(f"Rating {rating}/5 (+{extra})")

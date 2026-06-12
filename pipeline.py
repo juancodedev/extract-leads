@@ -10,6 +10,8 @@ import re
 from datetime import datetime
 from typing import Dict, List
 
+from rapidfuzz import fuzz
+
 from extractor import PlacesExtractor
 from enricher import Enricher
 from lead_scorer import LeadScorer
@@ -20,6 +22,25 @@ logging.basicConfig(
     format="%(levelname)s | %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+DUP_THRESHOLD = 85
+
+
+def deduplicate_leads(leads: List[Dict], threshold: int = DUP_THRESHOLD) -> List[Dict]:
+    """Fuzzy-deduplicate leads by business name, keeping highest-scored lead."""
+    seen = []
+    unique = []
+    for lead in sorted(leads, key=lambda x: x.get("lead_score", 0), reverse=True):
+        name = (lead.get("business_name") or "").lower()
+        is_dup = False
+        for existing in seen:
+            if fuzz.token_sort_ratio(name, existing) >= threshold:
+                is_dup = True
+                break
+        if not is_dup:
+            seen.append(name)
+            unique.append(lead)
+    return unique
 
 
 def run_pipeline(
@@ -189,6 +210,7 @@ def run_pipeline(
             if do_ig_web and lead.get("instagram_handle"):
                 lead["requires_ig_web_prototype"] = True
 
+    all_leads = deduplicate_leads(all_leads)
     return all_leads
 
 

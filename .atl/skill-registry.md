@@ -15,6 +15,7 @@ Last updated: 2026-06-12
 - /Users/juanmunoz/.codex/skills
 - /Users/juanmunoz/.qwen/skills
 - /Users/juanmunoz/.kiro/skills
+- /Users/juanmunoz/.openclaw/skills
 
 ## Contract
 
@@ -22,26 +23,7 @@ Last updated: 2026-06-12
 
 `SKILL.md` remains the source of truth. Do not inject generated summaries or compact rules by default; pass paths so subagents load the full runtime contract and preserve author intent.
 
-## Project Convention Files
-
-| File | Purpose |
-| --- | --- |
-| `CLAUDE.md` | Agent guide: CLI commands, workflows, rules for lead prospecting and audits. |
-| `SKILL.md` | Formal LLM-first skill definition: extraction, SEO, Ads, Business audits, IG→Web. |
-| `openspec/config.yaml` | SDD/OpenSpec initialization context, strict_tdd, testing capabilities, phase rules. |
-
-## Project-Level Skills
-
-| Skill | Trigger / description | Scope | Path |
-| --- | --- | --- | --- |
-| `lead-extractor` | Extract, qualify, analyze, and export business leads automatically. Includes advanced audits (SEO, Meta Ads, Business) and Instagram-to-Web conversion. Triggers on: "extract leads", "find leads", "prospecting", "audit website", "SEO audit", "Meta Ads audit", "instagram to web". | project | `SKILL.md` |
-| `kit-prospeccion` | Lead prospecting engine: search businesses by industry/location, analyze digital presence, generate opportunity reports with contact data. | project | `agents/kit-prospeccion/CLAUDE.md` |
-| `kit-auditoria-seo` | Technical SEO audit: meta tags, headings, images, speed, schema, Open Graph, sitemap, robots.txt. Scores 8 categories 0-100. | project | `agents/kit-auditoria-seo/CLAUDE.md` |
-| `kit-auditoria-meta-ads` | Meta Ads audit: search active ads in Meta Library, analyze landing page coherence, copy, and creative effectiveness. | project | `agents/kit-auditoria-meta-ads/CLAUDE.md` |
-| `kit-auditoria-negocio` | Full digital business audit: web, social media, pricing, offers, sales funnel, brand coherence, reputation. | project | `agents/kit-auditoria-negocio/CLAUDE.md` |
-| `kit-instagram-web` | Instagram to professional website converter: extracts profile data and photos, generates premium personal brand HTML site. | project | `agents/kit-instagram-web/CLAUDE.md` |
-
-## User-Level Skills
+## Skills
 
 | Skill | Trigger / description | Scope | Path |
 | --- | --- | --- | --- |
@@ -50,32 +32,28 @@ Last updated: 2026-06-12
 | `chained-pr` | Trigger: PRs over 400 lines, stacked PRs, review slices. Split oversized changes into chained PRs that protect review focus. | user | `/Users/juanmunoz/.config/opencode/skills/chained-pr/SKILL.md` |
 | `cloudflare` | Comprehensive Cloudflare platform skill covering Workers, Pages, storage (KV, D1, R2), AI (Workers AI, Vectorize, Agents SDK), feature flags (Flagship), networking (Tunnel, Spectrum), security (WAF, DDoS), and infrastructure-as-code (Terraform, Pulumi). Use for any Cloudflare development task. Biases towards retrieval from Cloudflare docs over pre-trained knowledge. | user | `/Users/juanmunoz/.claude/skills/cloudflare/SKILL.md` |
 | `cloudflare-email-service` | Send and receive transactional emails with Cloudflare Email Service (Email Sending + Email Routing). Use when building email sending (Workers binding or REST API), email routing, Agents SDK email handling, or integrating email into any app — Workers, Node.js, Python, Go, etc. Also use for email deliverability, SPF/DKIM/DMARC, wrangler email setup, MCP email tools, or when a coding agent needs to send emails. Even for simple requests like "add email to my Worker" — this skill has critical config details. | user | `/Users/juanmunoz/.claude/skills/cloudflare-email-service/SKILL.md` |
+| `cloudflare-worker-builder` | Scaffold and deploy Cloudflare Workers with Hono routing, Vite plugin, and Static Assets. Describe project, scaffold structure, configure bindings, deploy. Use whenever the user wants to create a Worker project, set up Hono on Cloudflare, configure D1 / R2 / KV / Queues bindings, or troubleshoot Worker export syntax, API route conflicts, HMR issues, or deployment failures. | user | `/Users/juanmunoz/.agents/skills/cloudflare-worker-builder/SKILL.md` |
 | `cognitive-doc-design` | Design docs that reduce cognitive load. Trigger: writing guides, READMEs, RFCs, onboarding, architecture, or review-facing docs. | user | `/Users/juanmunoz/.config/opencode/skills/cognitive-doc-design/SKILL.md` |
 | `comment-writer` | Write warm, direct collaboration comments. Trigger: PR feedback, issue replies, reviews, Slack messages, or GitHub comments. | user | `/Users/juanmunoz/.config/opencode/skills/comment-writer/SKILL.md` |
-| `customize-opencode` | Use ONLY when the user is editing or creating opencode's own configuration. | user | `/Users/juanmunoz/.config/opencode/skills/customize-opencode/SKILL.md` |
+| `design-taste-frontend` | Anti-slop frontend skill for landing pages, portfolios, and redesigns. The agent reads the brief, infers the right design direction, and ships interfaces that do not look templated. Real design systems when applicable, audit-first on redesigns, strict pre-flight check. | user | `/Users/juanmunoz/.agents/skills/design-taste-frontend/SKILL.md` |
 | `durable-objects` | Create and review Cloudflare Durable Objects. Use when building stateful coordination (chat rooms, multiplayer games, booking systems), implementing RPC methods, SQLite storage, alarms, WebSockets, or reviewing DO code for best practices. Covers Workers integration, wrangler config, and testing with Vitest. Biases towards retrieval from Cloudflare docs over pre-trained knowledge. | user | `/Users/juanmunoz/.claude/skills/durable-objects/SKILL.md` |
 | `find-skills` | Helps users discover and install agent skills when they ask questions like "how do I do X", "find a skill for X", "is there a skill that can...", or express interest in extending capabilities. This skill should be used when the user is looking for functionality that might exist as an installable skill. | user | `/Users/juanmunoz/.agents/skills/find-skills/SKILL.md` |
+| `frontend-design` | Guidance for distinctive, intentional visual design when building new UI or reshaping an existing one. Helps with aesthetic direction, typography, and making choices that don't read as templated defaults. | user | `/Users/juanmunoz/.agents/skills/frontend-design/SKILL.md` |
 | `go-testing` | Trigger: Go tests, go test coverage, Bubbletea teatest, golden files. Apply focused Go testing patterns. | user | `/Users/juanmunoz/.config/opencode/skills/go-testing/SKILL.md` |
+| `imagegen` | Generate or edit raster images when the task benefits from AI-created bitmap visuals such as photos, illustrations, textures, sprites, mockups, or transparent-background cutouts. Use when Codex should create a brand-new image, transform an existing image, or derive visual variants from references, and the output should be a bitmap asset rather than repo-native code or vector. Do not use when the task is better handled by editing existing SVG/vector/code-native assets, extending an established icon or logo system, or building the visual directly in HTML/CSS/canvas. | user | `/Users/juanmunoz/.codex/skills/.system/imagegen/SKILL.md` |
 | `issue-creation` | Create Gentle AI issues with issue-first checks. Trigger: creating GitHub issues, bug reports, or feature requests. | user | `/Users/juanmunoz/.config/opencode/skills/issue-creation/SKILL.md` |
 | `judgment-day` | Trigger: judgment day, dual review, adversarial review, juzgar. Run blind dual review, fix confirmed issues, then re-judge. | user | `/Users/juanmunoz/.config/opencode/skills/judgment-day/SKILL.md` |
+| `openai-docs` | Use when the user asks how to build with OpenAI products or APIs, asks about Codex itself or choosing Codex surfaces, needs up-to-date official documentation with citations, help choosing the latest model for a use case, or model upgrade and prompt-upgrade guidance; use OpenAI docs MCP tools for non-Codex docs questions, use the Codex manual helper first for broad Codex self-knowledge, and restrict fallback browsing to official OpenAI domains. | user | `/Users/juanmunoz/.codex/skills/.system/openai-docs/SKILL.md` |
+| `plugin-creator` | Create and scaffold plugin directories for Codex with a required `.codex-plugin/plugin.json`, optional plugin folders/files, valid manifest defaults, and personal-marketplace entries by default. Use when Codex needs to create a new personal plugin, add optional plugin structure, generate or update marketplace entries for plugin ordering and availability metadata, or update an existing local plugin during development with the CLI-driven cachebuster and reinstall flow. | user | `/Users/juanmunoz/.codex/skills/.system/plugin-creator/SKILL.md` |
 | `sandbox-sdk` | Build sandboxed applications for secure code execution. Load when building AI code execution, code interpreters, CI/CD systems, interactive dev environments, or executing untrusted code. Covers Sandbox SDK lifecycle, commands, files, code interpreter, and preview URLs. Biases towards retrieval from Cloudflare docs over pre-trained knowledge. | user | `/Users/juanmunoz/.claude/skills/sandbox-sdk/SKILL.md` |
-| `sdd-apply` | Implement SDD tasks from specs and design. Trigger: orchestrator launches apply for one or more change tasks. | user | `/Users/juanmunoz/.config/opencode/skills/sdd-apply/SKILL.md` |
-| `sdd-archive` | Archive a completed SDD change by syncing delta specs. Trigger: orchestrator launches archive after implementation and verification. | user | `/Users/juanmunoz/.config/opencode/skills/sdd-archive/SKILL.md` |
-| `sdd-design` | Create the SDD technical design and architecture approach. Trigger: orchestrator launches design for a change. | user | `/Users/juanmunoz/.config/opencode/skills/sdd-design/SKILL.md` |
-| `sdd-explore` | Explore SDD ideas before committing to a change. Trigger: orchestrator launches exploration or requirement clarification. | user | `/Users/juanmunoz/.config/opencode/skills/sdd-explore/SKILL.md` |
-| `sdd-init` | Trigger: sdd init, iniciar sdd, openspec init. Initialize SDD context, testing capabilities, registry, and persistence. | user | `/Users/juanmunoz/.config/opencode/skills/sdd-init/SKILL.md` |
-| `sdd-onboard` | Walk users through the SDD workflow on the real codebase. Trigger: orchestrator launches onboarding for the full SDD cycle. | user | `/Users/juanmunoz/.claude/skills/sdd-onboard/SKILL.md` |
-| `sdd-propose` | Create an SDD change proposal with intent, scope, and approach. Trigger: orchestrator launches proposal work for a change. | user | `/Users/juanmunoz/.claude/skills/sdd-propose/SKILL.md` |
-| `sdd-spec` | Write SDD delta specs with requirements and scenarios. Trigger: orchestrator launches spec work for a change. | user | `/Users/juanmunoz/.claude/skills/sdd-spec/SKILL.md` |
-| `sdd-tasks` | Break an SDD change into implementation tasks. Trigger: orchestrator launches task planning for a change. | user | `/Users/juanmunoz/.config/opencode/skills/sdd-tasks/SKILL.md` |
-| `sdd-verify` | Trigger: SDD verification phase, verify change. Execute tests and prove implementation matches specs, design, and tasks. | user | `/Users/juanmunoz/.config/opencode/skills/sdd-verify/SKILL.md` |
 | `skill-creator` | Trigger: new skills, agent instructions, documenting AI usage patterns. Create LLM-first skills with valid frontmatter. | user | `/Users/juanmunoz/.config/opencode/skills/skill-creator/SKILL.md` |
 | `skill-improver` | Trigger: improve skills, audit skills, refactor skills, skill quality. Audit and upgrade existing LLM-first skills. | user | `/Users/juanmunoz/.config/opencode/skills/skill-improver/SKILL.md` |
-| `skill-registry` | Trigger: update skills, skill registry, actualizar skills, after skill changes. Index available skills by trigger and path. | user | `/Users/juanmunoz/.config/opencode/skills/skill-registry/SKILL.md` |
+| `skill-installer` | Install Codex skills into $CODEX_HOME/skills from a curated list or a GitHub repo path. Use when a user asks to list installable skills, install a curated skill, or install a skill from another repo (including private repos). | user | `/Users/juanmunoz/.codex/skills/.system/skill-installer/SKILL.md` |
+| `web-design-guidelines` | Review UI code for Web Interface Guidelines compliance. Use when asked to "review my UI", "check accessibility", "audit design", "review UX", or "check my site against best practices". | user | `/Users/juanmunoz/.agents/skills/web-design-guidelines/SKILL.md` |
 | `web-perf` | Analyzes web performance using Chrome DevTools MCP. Measures Core Web Vitals (LCP, INP, CLS) and supplementary metrics (FCP, TBT, Speed Index), identifies render-blocking resources, network dependency chains, layout shifts, caching issues, and accessibility gaps. Use when asked to audit, profile, debug, or optimize page load performance, Lighthouse scores, or site speed. Biases towards retrieval from current documentation over pre-trained knowledge. | user | `/Users/juanmunoz/.claude/skills/web-perf/SKILL.md` |
 | `work-unit-commits` | Plan commits as reviewable work units. Trigger: implementation, commit splitting, chained PRs, or keeping tests and docs with code. | user | `/Users/juanmunoz/.config/opencode/skills/work-unit-commits/SKILL.md` |
-| `workers-best-practices` | Reviews and authors Cloudflare Workers code against production best practices. Load when writing new Workers, reviewing Worker code, configuring wrangler.jsonc, or checking for common Workers anti-patterns (streaming, floating promises, global state, secrets, bindings, observability). Biases towards retrieval from Cloudflare docs over pre-trained knowledge. | user | `/Users/juanmunoz/.claude/skills/workers-best-practices/SKILL.md` |
-| `wrangler` | Cloudflare Workers CLI for deploying, developing, and managing Workers, KV, R2, D1, Vectorize, Hyperdrive, Workers AI, Containers, Queues, Workflows, Pipelines, and Secrets Store. Load before running wrangler commands to ensure correct syntax and best practices. Biases towards retrieval from Cloudflare docs over pre-trained knowledge. | user | `/Users/juanmunoz/.claude/skills/wrangler/SKILL.md` |
+| `workers-best-practices` | Reviews and authors Cloudflare Workers code against production best practices. Load when writing new Workers, reviewing Worker code, configuring wrangler.jsonc, or checking for common Workers anti-patterns (streaming, floating promises, global state, secrets, bindings, observability). Biases towards retrieval from Cloudflare docs over pre-trained knowledge. | user | `/Users/juanmunoz/.agents/skills/workers-best-practices/SKILL.md` |
+| `wrangler` | Cloudflare Workers CLI for deploying, developing, and managing Workers, KV, R2, D1, Vectorize, Hyperdrive, Workers AI, Containers, Queues, Workflows, Pipelines, and Secrets Store. Load before running wrangler commands to ensure correct syntax and best practices. Biases towards retrieval from Cloudflare docs over pre-trained knowledge. | user | `/Users/juanmunoz/.agents/skills/wrangler/SKILL.md` |
 
 ## Loading protocol
 

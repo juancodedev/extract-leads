@@ -33,6 +33,23 @@ CMS_PATTERNS = {
     "MiNegocio": [r"sitemi\.cl"],
 }
 
+TITLE_TRUNCATE = 100
+DESC_TRUNCATE = 150
+H1_TRUNCATE = 80
+SLOW_THRESHOLD_MS = 3000
+WARN_THRESHOLD_MS = 1500
+TITLE_MIN = 30
+TITLE_IDEAL_MIN = 50
+TITLE_IDEAL_MAX = 70
+CONTENT_SPARSE = 100
+CONTENT_LOW = 300
+MAX_IMPROVEMENTS = 12
+TECH_BASE_SCORE = 50
+TECH_MAX_SCORE = 100
+TECH_GREEN_THRESHOLD = 80
+TECH_YELLOW_THRESHOLD = 50
+
+
 class WebsiteAnalyzer:
     """Analyze a business website for quality signals and improvements."""
 
@@ -150,7 +167,7 @@ class WebsiteAnalyzer:
         if m:
             title = m.group(1).strip()
             seo["has_title"] = bool(title)
-            seo["title"] = title[:100]
+            seo["title"] = title[:TITLE_TRUNCATE]
             seo["title_length"] = len(title)
 
         # Meta description
@@ -166,7 +183,7 @@ class WebsiteAnalyzer:
         if m:
             desc = m.group(1).strip()
             seo["has_meta_description"] = bool(desc)
-            seo["meta_description"] = desc[:150]
+            seo["meta_description"] = desc[:DESC_TRUNCATE]
             seo["meta_description_length"] = len(desc)
 
         # OG tags
@@ -186,7 +203,7 @@ class WebsiteAnalyzer:
         seo["has_h1"] = len(h1s) > 0
         seo["h1_count"] = len(h1s)
         if h1s:
-            seo["h1_text"] = re.sub(r"<[^>]+>", "", h1s[0]).strip()[:80]
+            seo["h1_text"] = re.sub(r"<[^>]+>", "", h1s[0]).strip()[:H1_TRUNCATE]
 
         # Robots meta
         if re.search(r'name=["\']robots["\']', html, re.IGNORECASE):
@@ -358,9 +375,9 @@ class WebsiteAnalyzer:
 
         # Performance
         rt = analysis.get("response_time_ms", 0)
-        if rt > 3000:
+        if rt > SLOW_THRESHOLD_MS:
             improvements.append(f"🐌 Carga lenta: {rt}ms (ideal < 2s)")
-        elif rt > 1500:
+        elif rt > WARN_THRESHOLD_MS:
             improvements.append(f"⏱️ Tiempo de carga mejorable: {rt}ms")
         else:
             improvements.append(f"⚡ Carga rápida: {rt}ms")
@@ -373,9 +390,9 @@ class WebsiteAnalyzer:
             improvements.append("📄 Falta etiqueta <title>")
         else:
             tl = seo.get("title_length", 0)
-            if tl < 30:
+            if tl < TITLE_MIN:
                 improvements.append(f"📄 Title muy corto ({tl} chars) — ideal 50-60")
-            elif tl > 70:
+            elif tl > TITLE_IDEAL_MAX:
                 improvements.append(f"📄 Title muy largo ({tl} chars) — ideal 50-60")
             else:
                 improvements.append(f"📄 Title OK ({tl} chars)")
@@ -448,9 +465,9 @@ class WebsiteAnalyzer:
 
         # Content
         wc = content.get("word_count", 0)
-        if wc < 100:
+        if wc < CONTENT_SPARSE:
             improvements.append(f"📝 Contenido escaso: {wc} palabras (ideal > 300)")
-        elif wc < 300:
+        elif wc < CONTENT_LOW:
             improvements.append(f"📝 Poco contenido: {wc} palabras")
         else:
             improvements.append(f"📝 Buen contenido: {wc} palabras")
@@ -556,7 +573,7 @@ def _generate_html(results: List[Dict], output_path: str, total_leads: int, audi
         status_color = "#22c55e" if status == "ok" else ("#f59e0b" if code else "#ef4444")
 
         # Score calculation (Technical Score)
-        tech_score = 50
+        tech_score = TECH_BASE_SCORE
         if status == "ok": tech_score += 15
         if ssl: tech_score += 5
         if rt < 1500: tech_score += 5
@@ -576,9 +593,9 @@ def _generate_html(results: List[Dict], output_path: str, total_leads: int, audi
         if content.get("has_cta"): tech_score += 3
         if content.get("has_testimonials"): tech_score += 2
         if booking.get("has_booking"): tech_score += 3
-        tech_score = min(tech_score, 100)
+        tech_score = min(tech_score, TECH_MAX_SCORE)
 
-        tech_score_color = "#22c55e" if tech_score >= 80 else ("#f59e0b" if tech_score >= 50 else "#ef4444")
+        tech_score_color = "#22c55e" if tech_score >= TECH_GREEN_THRESHOLD else ("#f59e0b" if tech_score >= TECH_YELLOW_THRESHOLD else "#ef4444")
         
         # Lead Score (from original prospecting)
         lead_score = r.get("lead_score", 0)
@@ -598,7 +615,7 @@ def _generate_html(results: List[Dict], output_path: str, total_leads: int, audi
         if contact.get("has_google_maps_embed"): contact_icons += "📍 "
 
         defs_html = ""
-        for imp in improvements[:12]:
+        for imp in improvements[:MAX_IMPROVEMENTS]:
             icon = imp[:2] if len(imp) > 2 else "•"
             bg = score_bg.get(icon, "#f8fafc")
             defs_html += f'<span class="def" style="background:{bg}">{html_lib.escape(str(imp))}</span>\n'
