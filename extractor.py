@@ -25,9 +25,13 @@ class PlacesExtractor:
     BASE_URL = "https://maps.googleapis.com/maps/api/place"
     FIELDS = "website,formatted_phone_number,international_phone_number,opening_hours,url,rating,user_ratings_total"
 
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str, config: Optional[Dict] = None):
         self.api_key = api_key
         self._request_count = 0
+        ext_cfg = (config or {}).get("extraction", {})
+        self.max_pages = ext_cfg.get("max_pages", MAX_PAGES)
+        self.page_token_delay = ext_cfg.get("page_token_delay", PAGE_TOKEN_DELAY)
+        self.request_timeout = ext_cfg.get("request_timeout", REQUEST_TIMEOUT)
 
     @property
     def request_count(self) -> int:
@@ -54,7 +58,7 @@ class PlacesExtractor:
         }
 
         pages = 0
-        while pages < MAX_PAGES:
+        while pages < self.max_pages:
             resp = self._request("/textsearch/json", params)
             if resp is None:
                 break
@@ -102,7 +106,7 @@ class PlacesExtractor:
                 break
 
             params["pagetoken"] = next_token
-            time.sleep(PAGE_TOKEN_DELAY)
+            time.sleep(self.page_token_delay)
             pages += 1
 
         return results
@@ -128,7 +132,7 @@ class PlacesExtractor:
             resp = requests.get(
                 f"{self.BASE_URL}{endpoint}",
                 params=params,
-                timeout=REQUEST_TIMEOUT,
+                timeout=self.request_timeout,
             )
             resp.raise_for_status()
             return resp

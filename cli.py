@@ -275,9 +275,19 @@ def run_interactive():
             "locations": chosen_cities,
             "target_size": "micro",
         },
+        "extraction": {
+            "max_pages": 3,
+            "page_token_delay": 2,
+            "request_timeout": 15,
+        },
+        "enrichment": {
+            "hunter_timeout": 10,
+            "website_scan_timeout": 10,
+        },
         "scoring": {
             "base_score": 50,
             "max_score": 100,
+            "dup_threshold": 85,
             "weights": {
                 "website": 15,
                 "active_social": 20,
@@ -288,6 +298,16 @@ def run_interactive():
                 "premium_location": 10,
                 "employees_5plus": 8,
                 "years_2plus": 7,
+            },
+            "thresholds": {
+                "slow_ms": 3000,
+                "warn_ms": 1500,
+            },
+            "goal_bonuses": {
+                "web": {"no_site_bonus": 40, "has_site_penalty": -10},
+                "seo": {"no_social_bonus": 20, "poor_tech_bonus": 30, "no_site_penalty": -20},
+                "ads": {"has_site_bonus": 20, "low_rating_bonus": 15, "low_rating_threshold": 4.2},
+                "general": {"high_rating_threshold": 4.5},
             },
             "tiers": {"hot": [80, 100], "warm": [60, 79], "cool": [40, 59], "cold": [0, 39]},
         },

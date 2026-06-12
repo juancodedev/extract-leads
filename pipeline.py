@@ -54,10 +54,10 @@ def run_pipeline(
     do_ig_web: bool = False,
 ) -> List[Dict]:
     """Execute the full extraction pipeline with optional deep audits."""
-    extractor = PlacesExtractor(api_key)
-    enricher = Enricher(hunter_key if hunter_key else None)
+    extractor = PlacesExtractor(api_key, config)
+    enricher = Enricher(hunter_key if hunter_key else None, config)
     scorer = LeadScorer(config, goal=goal)
-    analyzer = WebsiteAnalyzer() if do_seo else None
+    analyzer = WebsiteAnalyzer(config=config) if do_seo else None
 
     all_leads: List[Dict] = []
     seen_names: set = set()
@@ -210,7 +210,8 @@ def run_pipeline(
             if do_ig_web and lead.get("instagram_handle"):
                 lead["requires_ig_web_prototype"] = True
 
-    all_leads = deduplicate_leads(all_leads)
+    dup_threshold = config.get("scoring", {}).get("dup_threshold", DUP_THRESHOLD)
+    all_leads = deduplicate_leads(all_leads, threshold=dup_threshold)
     return all_leads
 
 

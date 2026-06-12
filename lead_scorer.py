@@ -36,6 +36,12 @@ class LeadScorer:
         self.base_score = scoring.get("base_score", 50)
         self.max_score = scoring.get("max_score", 100)
 
+        bonuses = scoring.get("goal_bonuses", {})
+        self._gb_web = bonuses.get("web", {})
+        self._gb_seo = bonuses.get("seo", {})
+        self._gb_ads = bonuses.get("ads", {})
+        self._gb_general = bonuses.get("general", {})
+
         self._build_industry_bonuses()
         self._build_premium_locations()
 
@@ -80,39 +86,47 @@ class LeadScorer:
         # Goal-based Opportunity Scoring (Inspired by kit-prospeccion)
         if self.goal == "web":
             if not lead.get("website"):
-                score += WEB_NO_SITE_BONUS
-                notes.append("No Website: Max opportunity for web design (+40)")
+                bonus = self._gb_web.get("no_site_bonus", WEB_NO_SITE_BONUS)
+                score += bonus
+                notes.append(f"No Website: Max opportunity for web design (+{bonus})")
             else:
-                score += WEB_HAS_SITE_PENALTY
-                notes.append("Has Website: Lower opportunity for web design (-10)")
+                penalty = self._gb_web.get("has_site_penalty", WEB_HAS_SITE_PENALTY)
+                score += penalty
+                notes.append(f"Has Website: Lower opportunity for web design ({penalty})")
         
         elif self.goal == "seo":
             if lead.get("website"):
                 # Basic check: if it has website but no active social
                 if not lead.get("instagram_handle") and not lead.get("facebook_url"):
-                    score += SEO_NO_SOCIAL_BONUS
-                    notes.append("Has web but no social: SEO/Marketing opportunity (+20)")
+                    bonus = self._gb_seo.get("no_social_bonus", SEO_NO_SOCIAL_BONUS)
+                    score += bonus
+                    notes.append(f"Has web but no social: SEO/Marketing opportunity (+{bonus})")
                 
                 # Check for other signals from analyzer if available
                 audit = lead.get("audit_data", {})
                 if audit:
                     seo = audit.get("seo", {})
                     if not seo.get("has_meta_description") or not seo.get("has_h1"):
-                        score += SEO_POOR_TECH_BONUS
-                        notes.append("Poor technical SEO detected (+30)")
+                        bonus = self._gb_seo.get("poor_tech_bonus", SEO_POOR_TECH_BONUS)
+                        score += bonus
+                        notes.append(f"Poor technical SEO detected (+{bonus})")
             else:
-                score += SEO_NO_SITE_PENALTY
-                notes.append("No website: Cannot sell SEO yet (-20)")
+                penalty = self._gb_seo.get("no_site_penalty", SEO_NO_SITE_PENALTY)
+                score += penalty
+                notes.append(f"No website: Cannot sell SEO yet ({penalty})")
 
         elif self.goal == "ads":
             if lead.get("website"):
-                score += ADS_HAS_SITE_BONUS
-                notes.append("Has web: Ready for Ads traffic (+20)")
+                bonus = self._gb_ads.get("has_site_bonus", ADS_HAS_SITE_BONUS)
+                score += bonus
+                notes.append(f"Has web: Ready for Ads traffic (+{bonus})")
             
             rating = lead.get("google_rating")
-            if rating and isinstance(rating, (int, float)) and rating < ADS_LOW_RATING_THRESHOLD:
-                score += ADS_LOW_RATING_BONUS
-                notes.append(f"Rating < 4.2 ({rating}): Needs reputation boost (+15)")
+            threshold = self._gb_ads.get("low_rating_threshold", ADS_LOW_RATING_THRESHOLD)
+            if rating and isinstance(rating, (int, float)) and rating < threshold:
+                bonus = self._gb_ads.get("low_rating_bonus", ADS_LOW_RATING_BONUS)
+                score += bonus
+                notes.append(f"Rating < {threshold} ({rating}): Needs reputation boost (+{bonus})")
 
         else: # General quality-based scoring
             if lead.get("website"):
@@ -145,7 +159,8 @@ class LeadScorer:
         # High rating as quality signal (only for general)
         if self.goal == "general":
             rating = lead.get("google_rating")
-            if rating and isinstance(rating, (int, float)) and rating >= GENERAL_HIGH_RATING_THRESHOLD:
+            threshold = self._gb_general.get("high_rating_threshold", GENERAL_HIGH_RATING_THRESHOLD)
+            if rating and isinstance(rating, (int, float)) and rating >= threshold:
                 extra = self.weights.get("pain_points", 15) // 3
                 score += extra
                 notes.append(f"Rating {rating}/5 (+{extra})")

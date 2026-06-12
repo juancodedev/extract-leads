@@ -23,8 +23,11 @@ class Enricher:
     Social detection: parses website HTML for known social URLs.
     """
 
-    def __init__(self, hunter_api_key: Optional[str] = None):
+    def __init__(self, hunter_api_key: Optional[str] = None, config: Optional[Dict] = None):
         self.hunter_api_key = hunter_api_key
+        env_cfg = (config or {}).get("enrichment", {})
+        self.hunter_timeout = env_cfg.get("hunter_timeout", HUNTER_TIMEOUT)
+        self.website_scan_timeout = env_cfg.get("website_scan_timeout", WEBSITE_SCAN_TIMEOUT)
 
     def find_email(self, domain: str) -> Optional[str]:
         """Find email address for a domain using Hunter.io."""
@@ -35,7 +38,7 @@ class Enricher:
         params = {"domain": domain, "api_key": self.hunter_api_key}
 
         try:
-            resp = requests.get(url, params=params, timeout=HUNTER_TIMEOUT)
+            resp = requests.get(url, params=params, timeout=self.hunter_timeout)
             resp.raise_for_status()
             data = resp.json()
             emails = data.get("data", {}).get("emails", [])
@@ -69,7 +72,7 @@ class Enricher:
         try:
             resp = requests.get(
                 website,
-                timeout=WEBSITE_SCAN_TIMEOUT,
+                timeout=self.website_scan_timeout,
                 headers={
                     "User-Agent": (
                         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "

@@ -57,9 +57,12 @@ jinja_env = Environment(loader=FileSystemLoader(TEMPLATE_DIR), autoescape=True)
 class WebsiteAnalyzer:
     """Analyze a business website for quality signals and improvements."""
 
-    def __init__(self, timeout: int = 15):
+    def __init__(self, timeout: int = 15, config: Optional[Dict] = None):
         self.timeout = timeout
         self.session = requests.Session()
+        sc_cfg = (config or {}).get("scoring", {}).get("thresholds", {})
+        self.slow_threshold = sc_cfg.get("slow_ms", SLOW_THRESHOLD_MS)
+        self.warn_threshold = sc_cfg.get("warn_ms", WARN_THRESHOLD_MS)
         self.session.headers.update({
             "User-Agent": (
                 "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -379,9 +382,9 @@ class WebsiteAnalyzer:
 
         # Performance
         rt = analysis.get("response_time_ms", 0)
-        if rt > SLOW_THRESHOLD_MS:
+        if rt > self.slow_threshold:
             improvements.append(f"🐌 Carga lenta: {rt}ms (ideal < 2s)")
-        elif rt > WARN_THRESHOLD_MS:
+        elif rt > self.warn_threshold:
             improvements.append(f"⏱️ Tiempo de carga mejorable: {rt}ms")
         else:
             improvements.append(f"⚡ Carga rápida: {rt}ms")
