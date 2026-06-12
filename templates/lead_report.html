@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+.stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin-bottom:28px; }
+.stat { background:#fff; border-radius:12px; padding:14px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.06); }
+.stat-value { font-size:30px; font-weight:700; }
+.stat-label { font-size:12px; color:#64748b; margin-top:2px; }
+.cards { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:28px; }
+@media (max-width:768px) { .cards { grid-template-columns:1fr; } }
+.card h3 { font-size:15px; font-weight:600; margin-bottom:12px; color:#475569; }
+.ind-bar { display:flex; align-items:center; gap:10px; margin-bottom:7px; }
+.ind-name { font-size:13px; width:180px; flex-shrink:0; }
+.ind-track { flex:1; height:8px; background:#f1f5f9; border-radius:4px; overflow:hidden; }
+.ind-fill { height:100%; background:#3b82f6; border-radius:4px; transition:width 0.4s; }
+.ind-count { font-size:13px; color:#64748b; width:30px; text-align:right; }
+.table-wrap { background:#fff; border-radius:12px; overflow-x:auto; box-shadow:0 1px 3px rgba(0,0,0,0.06); }
+table { width:100%; border-collapse:collapse; font-size:13px; min-width:900px; }
+th { background:#f8fafc; text-align:left; padding:10px 8px; font-weight:600; color:#475569; border-bottom:2px solid #e2e8f0; white-space:nowrap; }
+td { padding:9px 8px; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
+tr:hover { background:#fafafa; }
+.num { text-align:center; }
+.contacts { white-space:nowrap; }
+a.contact-badge { text-decoration:none; margin-right:6px; cursor:pointer; opacity:0.8; transition:all 0.15s; display:inline-flex; align-items:center; vertical-align:middle; }
+a.contact-badge:hover { opacity:1; transform:scale(1.2); }
+.material-icons { font-size: 20px; }
+.booking-badge { text-decoration:none; cursor:pointer; opacity:0.7; display:inline-flex; align-items:center; vertical-align:middle; }
+.booking-badge:hover { opacity:1; transform:scale(1.2); }
+.tier { display:inline-block; padding:2px 10px; border-radius:12px; font-size:11px; font-weight:600; }
+.opportunity-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(350px,1fr)); gap:16px; margin-bottom:28px; }
+.opportunity-card { background:#fff; border-radius:12px; padding:20px; box-shadow:0 1px 3px rgba(0,0,0,0.06); border:1px solid #e2e8f0; }
+.ranking-legend { background:#fff; border-radius:12px; padding:20px; margin-bottom:28px; box-shadow:0 1px 3px rgba(0,0,0,0.06); border-left:4px solid #3b82f6; }
+.ranking-legend h3 { font-size:16px; margin-bottom:10px; color:#1e293b; }
+.ranking-legend p { font-size:13px; color:#64748b; line-height:1.5; margin-bottom:12px; }
+.tier-legend { display:flex; gap:12px; flex-wrap:wrap; }
+.tier-item { display:flex; align-items:center; gap:6px; font-size:12px; }
+{% endblock %}
+
+{% block extra_head %}
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+{% endblock %}
+
+{% block header_content %}
+<h1 style="display:flex; align-items:center; gap:10px;"><span class="material-icons" style="font-size:32px; color:#3b82f6;">analytics</span> Lead Report</h1>
+<p>{{ total }} leads extraídos • {{ now }} • {{ phones }} con teléfono • {{ websites }} con web • {{ with_wa }} WhatsApp • {{ with_booking }} con reservas • {{ "%.1f"|format(avg_rating) }} rating promedio</p>
+{% endblock %}
+
+{% block content %}
+<div class="stats-grid">
+  <div class="stat">
+    <div class="stat-value">{{ total }}</div>
+    <div class="stat-label">Total leads</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value" style="color:#22c55e">{{ phones }}</div>
+    <div class="stat-label">Con teléfono</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value" style="color:#25D366">{{ with_wa }}</div>
+    <div class="stat-label">WhatsApp</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value" style="color:#3b82f6">{{ websites }}</div>
+    <div class="stat-label">Con web</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value" style="color:#8b5cf6">{{ with_booking }}</div>
+    <div class="stat-label">Sistema reservas</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value" style="color:#f59e0b">{{ "%.1f"|format(avg_rating) }}</div>
+    <div class="stat-label">Rating promedio</div>
+  </div>
+  {% for tier in tiers %}
+  <div class="stat">
+    <div class="stat-value" style="color:{{ tier.color }}">{{ tier.count }}</div>
+    <div class="stat-label">{{ tier.name }} <span style="color:#94a3b8">({{ tier.pct }}%)</span></div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="ranking-legend">
+  <h3>¿Qué significa el Ranking?</h3>
+  <p>El <strong>Lead Score</strong> (0-100) mide el potencial de conversión y la necesidad de servicios digitales. Se calcula analizando la presencia de sitio web, redes sociales activas, canales de contacto, ubicación premium y deficiencias técnicas que representan una oportunidad de venta.</p>
+  <div class="tier-legend">
+    <div class="tier-item"><span class="tier" style="background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid #ef4444">HOT (80-100)</span> <span>Alta prioridad: Necesidad crítica o encaje perfecto.</span></div>
+    <div class="tier-item"><span class="tier" style="background:rgba(245,158,11,0.1);color:#f59e0b;border:1px solid #f59e0b">WARM (60-79)</span> <span>Interés alto: Buen prospecto con margen de mejora.</span></div>
+    <div class="tier-item"><span class="tier" style="background:rgba(59,130,246,0.1);color:#3b82f6;border:1px solid #3b82f6">COOL (40-59)</span> <span>Interés medio: Requiere más trabajo de educación.</span></div>
+    <div class="tier-item"><span class="tier" style="background:rgba(107,114,128,0.1);color:#6b7280;border:1px solid #6b7280">COLD (0-39)</span> <span>Baja prioridad: Poco encaje o ya bien servido.</span></div>
+  </div>
+</div>
+
+<h3 style="margin-bottom:16px; font-size:18px;">🔥 Top 5 Oportunidades</h3>
+<div class="opportunity-grid">
+  {% for opp in top_opportunities %}
+  <div class="opportunity-card">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+      <div>
+        <h4 style="font-size:16px; margin-bottom:4px;">{{ opp.name }}</h4>
+        <div style="font-size:12px; color:#64748b; margin-bottom:8px;">{{ opp.industry }} &bull; {{ opp.city }}</div>
+        <div style="margin-bottom:8px;">{{ opp.audit_badges|safe }}</div>
+      </div>
+      <div class="tier" style="background:{{ opp.tier_bg }};color:{{ opp.tier_color }}">
+        Score: {{ opp.score }}
+      </div>
+    </div>
+    <div style="font-size:13px; margin-bottom:12px; padding:8px; background:#f8fafc; border-radius:6px; border-left:4px solid #3b82f6;">
+      <strong>Análisis:</strong> {{ opp.notes }}
+    </div>
+    <div style="background:#f1f5f9; padding:10px; border-radius:6px; font-size:12px; font-style:italic;">
+      <strong>Sugerencia de contacto:</strong> "{{ opp.suggested_msg }}"
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="cards">
+  <div class="card">
+    <h3>Por industria</h3>
+    {% for ind in industries %}
+    <div class="ind-bar">
+      <div class="ind-name">{{ ind.name }}</div>
+      <div class="ind-track"><div class="ind-fill" style="width:{{ ind.pct }}%"></div></div>
+      <div class="ind-count">{{ ind.count }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="card">
+    <h3>Por lead tier</h3>
+    <div class="stats-grid" style="grid-template-columns:1fr 1fr; margin-bottom:0;">
+      {% for tier in tiers %}
+      <div class="stat">
+        <div class="stat-value" style="color:{{ tier.color }}">{{ tier.count }}</div>
+        <div class="stat-label">{{ tier.name }} <span style="color:#94a3b8">({{ tier.pct }}%)</span></div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th class="num">#</th>
+        <th>Negocio</th>
+        <th>Industria</th>
+        <th>Ciudad</th>
+        <th>Contacto</th>
+        <th class="num"><span class="material-icons" style="font-size:18px;">event_available</span></th>
+        <th class="num"><span class="material-icons" style="font-size:18px;">star</span></th>
+        <th class="num">Reviews</th>
+        <th>Tier</th>
+        <th class="num">Score</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td class="num">{{ row.num }}</td>
+        <td><strong>{{ row.name }}</strong></td>
+        <td>{{ row.industry }}</td>
+        <td>{{ row.city }}</td>
+        <td class="contacts">{{ row.contacts_html|safe }}</td>
+        <td class="num">{{ row.booking_badge|safe }}</td>
+        <td class="num">{{ row.rating }}</td>
+        <td class="num">{{ row.reviews }}</td>
+        <td><span class="tier" style="background:{{ row.tier_bg }};color:{{ row.tier_color }};border:1px solid {{ row.tier_color }}">{{ row.tier }}</span></td>
+        <td class="num"><strong>{{ row.score }}</strong></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block footer_text %}Lead Extractor{% endblock %}

@@ -46,10 +46,10 @@ Chain strategy: pending
 
 ## Phase 4: Jinja2 Templates (D1)
 
-- [ ] 4.1 `requirements.txt` — Add `Jinja2`
-- [ ] 4.2 Create `templates/base.html` — Shared HTML shell (DOCTYPE, head with CSS, body with content+footer blocks)
-- [ ] 4.3 Create `templates/lead_report.html` — Extends base.html; stats grid, ranking legend, top opportunities, table, industry/tier cards
-- [ ] 4.4 Create `templates/audit_report.html` — Extends base.html; stats bar, per-site cards with improvements grid
-- [ ] 4.5 `reporters.py` — Replace ~140 lines inline HTML with `Environment(FileSystemLoader).get_template('lead_report.html').render(data)`; pass computed data dict
-- [ ] 4.6 `analyzer.py` — Replace ~65 lines inline HTML in `_generate_html()` with Jinja2 render
-- [ ] 4.7 Verify: `grep -n '"""<' reporters.py analyzer.py` returns empty; run `python pipeline.py --from-csv --html test.html` (no crash)
+- [x] 4.1 `requirements.txt` — Add `Jinja2`
+- [x] 4.2 Create `templates/base.html` — Shared HTML shell (DOCTYPE, head with CSS, body with content+footer blocks)
+- [x] 4.3 Create `templates/lead_report.html` — Extends base.html; stats grid, ranking legend, top opportunities, table, industry/tier cards
+- [x] 4.4 Create `templates/audit_report.html` — Extends base.html; stats bar, per-site cards with improvements grid
+- [x] 4.5 `reporters.py` — Replace ~140 lines inline HTML with `Environment(FileSystemLoader).get_template('lead_report.html').render(data)`; pass computed data dict
+- [x] 4.6 `analyzer.py` — Replace ~65 lines inline HTML in `_generate_html()` with Jinja2 render
+- [x] 4.7 Verify: `grep -n '"""<' reporters.py analyzer.py` returns empty; `python3 pipeline.py --help` works; HTML generation from CSV produces valid output (173kB, no Jinja syntax leaked)

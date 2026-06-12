@@ -12,6 +12,7 @@ from typing import Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
 import requests
+from jinja2 import Environment, FileSystemLoader
 
 from booking_data import BOOKING_DOMAINS, BOOKING_SKIP
 
@@ -48,6 +49,9 @@ TECH_BASE_SCORE = 50
 TECH_MAX_SCORE = 100
 TECH_GREEN_THRESHOLD = 80
 TECH_YELLOW_THRESHOLD = 50
+
+TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "templates")
+jinja_env = Environment(loader=FileSystemLoader(TEMPLATE_DIR), autoescape=True)
 
 
 class WebsiteAnalyzer:
@@ -550,7 +554,7 @@ def _generate_html(results: List[Dict], output_path: str, total_leads: int, audi
         "⏱️": "#fef3c7",
     }
 
-    cards = ""
+    cards = []
     for r in results:
         name = str(r.get("business_name", "") or "")
         status = r.get("status", "error")
@@ -596,7 +600,7 @@ def _generate_html(results: List[Dict], output_path: str, total_leads: int, audi
         tech_score = min(tech_score, TECH_MAX_SCORE)
 
         tech_score_color = "#22c55e" if tech_score >= TECH_GREEN_THRESHOLD else ("#f59e0b" if tech_score >= TECH_YELLOW_THRESHOLD else "#ef4444")
-        
+
         # Lead Score (from original prospecting)
         lead_score = r.get("lead_score", 0)
         lead_tier = r.get("lead_tier", "COLD")
@@ -614,110 +618,55 @@ def _generate_html(results: List[Dict], output_path: str, total_leads: int, audi
         if contact.get("has_email_link"): contact_icons += "📧 "
         if contact.get("has_google_maps_embed"): contact_icons += "📍 "
 
-        defs_html = ""
-        for imp in improvements[:MAX_IMPROVEMENTS]:
-            icon = imp[:2] if len(imp) > 2 else "•"
-            bg = score_bg.get(icon, "#f8fafc")
-            defs_html += f'<span class="def" style="background:{bg}">{html_lib.escape(str(imp))}</span>\n'
+        mobile_str = "Responsive" if mobile.get("has_viewport") else "No responsive"
+        seo_title = str(seo.get("title", "Sin title") or "Sin title")[:40]
+        industry = str(r.get("industry", "") or "")
+        city = str(r.get("city", "") or "")
+        phone = str(r.get("phone", "") or "")
 
-        cards += f"""\
-    <div class="card">
-      <div class="card-header">
-        <div>
-          <div class="card-title">{html_lib.escape(name)} <span style="font-size:12px; font-weight:normal; color:{lead_color}; border:1px solid {lead_color}; padding:1px 6px; border-radius:10px; margin-left:8px;">{lead_tier} Lead ({lead_score})</span></div>
-          <div class="card-url"><a href="{html_lib.escape(url, quote=True)}" target="_blank">{html_lib.escape(url[:60])}</a></div>
-          <div class="card-meta">{html_lib.escape(str(r.get('industry', '') or ''))} · {html_lib.escape(str(r.get('city', '') or ''))} · {html_lib.escape(str(r.get('phone', '') or ''))}</div>
-        </div>
-        <div style="text-align:right;">
-          <div class="card-score" style="color:{tech_score_color}">{tech_score}</div>
-          <div style="font-size:10px; color:#94a3b8; font-weight:600; text-transform:uppercase;">Web Score</div>
-        </div>
-      </div>
-
-      <div class="card-stats">
-        <div class="cs"><span class="cs-v" style="color:{status_color}">{status_emoji}</span><span class="cs-l">{code} · {rt}ms</span></div>
-        <div class="cs"><span class="cs-v">{'🔒' if ssl else '🔓'}</span><span class="cs-l">{'HTTPS' if ssl else 'No SSL'}</span></div>
-        <div class="cs"><span class="cs-v">📅</span><span class="cs-l">{html_lib.escape(booking_str)}</span></div>
-        <div class="cs"><span class="cs-v">🖼️</span><span class="cs-l">{html_lib.escape(imgs_html)}</span></div>
-        <div class="cs"><span class="cs-v">📱</span><span class="cs-l">{'Responsive' if mobile.get('has_viewport') else 'No responsive'}</span></div>
-        <div class="cs"><span class="cs-v">🏗️</span><span class="cs-l">{html_lib.escape(tech)}</span></div>
-        <div class="cs"><span class="cs-v">📞</span><span class="cs-l">{contact_icons if contact_icons else 'Sin contacto'}</span></div>
-        <div class="cs"><span class="cs-v">📄</span><span class="cs-l">{html_lib.escape(str(seo.get('title', 'Sin title') or 'Sin title')[:40])}</span></div>
-      </div>
-
-      <div class="card-section">Mejoras detectadas</div>
-      <div class="defs">
-{defs_html}
-      </div>
-    </div>"""
+        cards.append({
+            "name": name,
+            "url": url,
+            "industry": industry,
+            "city": city,
+            "phone": phone,
+            "score": tech_score,
+            "score_color": tech_score_color,
+            "status_emoji": status_emoji,
+            "status_color": status_color,
+            "code": code,
+            "rt": rt,
+            "ssl": ssl,
+            "booking_str": booking_str,
+            "imgs_html": imgs_html,
+            "mobile_str": mobile_str,
+            "tech": tech,
+            "contact_icons": contact_icons,
+            "seo_title": seo_title,
+            "improvements": improvements[:MAX_IMPROVEMENTS],
+            "lead_tier": lead_tier,
+            "lead_color": lead_color,
+            "lead_score": lead_score,
+        })
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
 
-    html = f"""\
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Website Audit — {audited} sitios analizados</title>
-<style>
-* {{ margin:0; padding:0; box-sizing:border-box; }}
-body {{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; background:#f1f5f9; color:#1e293b; }}
-.container {{ max-width:960px; margin:0 auto; padding:24px 16px; }}
-.header {{ margin-bottom:28px; }}
-.header h1 {{ font-size:26px; font-weight:700; }}
-.header p {{ color:#64748b; margin-top:4px; font-size:14px; }}
-.stats-bar {{ display:flex; gap:12px; margin-bottom:28px; flex-wrap:wrap; }}
-.stat-pill {{ background:#fff; padding:10px 18px; border-radius:30px; font-size:14px; box-shadow:0 1px 3px rgba(0,0,0,0.06); }}
-.stat-pill strong {{ font-size:18px; }}
-.ranking-legend {{ background:#fff; border-radius:14px; padding:20px; margin-bottom:20px; box-shadow:0 1px 3px rgba(0,0,0,0.06); border-left:4px solid #3b82f6; }}
-.ranking-legend h3 {{ font-size:16px; margin-bottom:10px; color:#1e293b; }}
-.ranking-legend p {{ font-size:13px; color:#64748b; line-height:1.5; }}
-.card {{ background:#fff; border-radius:14px; padding:20px; margin-bottom:14px; box-shadow:0 1px 3px rgba(0,0,0,0.06); }}
-.card-header {{ display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:12px; }}
-.card-title {{ font-size:17px; font-weight:600; }}
-.card-url {{ font-size:12px; }}
-.card-url a {{ color:#3b82f6; text-decoration:none; }}
-.card-url a:hover {{ text-decoration:underline; }}
-.card-meta {{ font-size:12px; color:#94a3b8; margin-top:2px; }}
-.card-score {{ font-size:28px; font-weight:700; }}
-.card-stats {{ display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:6px; margin-bottom:12px; }}
-.cs {{ display:flex; align-items:center; gap:6px; font-size:12px; color:#475569; }}
-.cs-v {{ font-size:14px; }}
-.cs-l {{ }}
-.card-section {{ font-size:12px; font-weight:600; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px; }}
-.defs {{ display:flex; flex-wrap:wrap; gap:5px; }}
-.def {{ font-size:11px; padding:3px 8px; border-radius:6px; color:#334155; line-height:1.5; }}
-.footer {{ text-align:center; padding:24px; color:#94a3b8; font-size:12px; }}
-</style>
-</head>
-<body>
-<div class="container">
-  <div class="header">
-    <h1>🔍 Website Audit — Leads</h1>
-    <p>{audited} sitios auditados de {total_leads} leads totales • {now} • {ok_sites} funcionando • {error_sites} con errores • ⏱️ {avg_rt}ms promedio</p>
-  </div>
+    with_booking = sum(1 for r in results if r.get("booking", {}).get("has_booking"))
+    with_whatsapp = sum(1 for r in results if r.get("contact", {}).get("has_whatsapp"))
 
-  <div class="stats-bar">
-    <span class="stat-pill">📊 <strong>{audited}</strong> auditados</span>
-    <span class="stat-pill">✅ <strong>{ok_sites}</strong> funcionando</span>
-    <span class="stat-pill">❌ <strong>{error_sites}</strong> con error</span>
-    <span class="stat-pill">⏱️ <strong>{avg_rt}</strong>ms promedio</span>
-    <span class="stat-pill">📅 <strong>{sum(1 for r in results if r.get('booking', {}).get('has_booking'))}</strong> con reservas</span>
-    <span class="stat-pill">💬 <strong>{sum(1 for r in results if r.get('contact', {}).get('has_whatsapp'))}</strong> WhatsApp</span>
-  </div>
-
-  <div class="ranking-legend">
-    <h3>¿Cómo leer esta auditoría?</h3>
-    <p>Los leads están ordenados por su <strong>Lead Score</strong> (potencial de negocio). El <strong>Web Score</strong> (0-100) evalúa la salud técnica actual del sitio. Una discrepancia (Lead Score alto + Web Score bajo) representa la oportunidad perfecta para una venta de servicios de optimización o rediseño.</p>
-  </div>
-
-{cards}
-
-  <div class="footer">Lead Extractor · Website Audit · {now}</div>
-</div>
-</body>
-</html>"""
+    template = jinja_env.get_template("audit_report.html")
+    html = template.render(
+        audited=audited,
+        total_leads=total_leads,
+        now=now,
+        ok_sites=ok_sites,
+        error_sites=error_sites,
+        avg_rt=avg_rt,
+        with_booking=with_booking,
+        with_whatsapp=with_whatsapp,
+        cards=cards,
+        score_bg=score_bg,
+    )
 
     out_dir = os.path.dirname(output_path)
     if out_dir:

@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Website Audit — {{ audited }} sitios analizados{% endblock %}
+
+{% block extra_css %}
+body { background:#f1f5f9; }
+.container { max-width:960px; }
+.stats-bar { display:flex; gap:12px; margin-bottom:28px; flex-wrap:wrap; }
+.stat-pill { background:#fff; padding:10px 18px; border-radius:30px; font-size:14px; box-shadow:0 1px 3px rgba(0,0,0,0.06); }
+.stat-pill strong { font-size:18px; }
+.ranking-legend { background:#fff; border-radius:14px; padding:20px; margin-bottom:20px; box-shadow:0 1px 3px rgba(0,0,0,0.06); border-left:4px solid #3b82f6; }
+.ranking-legend h3 { font-size:16px; margin-bottom:10px; color:#1e293b; }
+.ranking-legend p { font-size:13px; color:#64748b; line-height:1.5; }
+.card { background:#fff; border-radius:14px; padding:20px; margin-bottom:14px; box-shadow:0 1px 3px rgba(0,0,0,0.06); }
+.card-header { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:12px; }
+.card-title { font-size:17px; font-weight:600; }
+.card-url { font-size:12px; }
+.card-url a { color:#3b82f6; text-decoration:none; }
+.card-url a:hover { text-decoration:underline; }
+.card-meta { font-size:12px; color:#94a3b8; margin-top:2px; }
+.card-score { font-size:28px; font-weight:700; }
+.card-stats { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:6px; margin-bottom:12px; }
+.cs { display:flex; align-items:center; gap:6px; font-size:12px; color:#475569; }
+.cs-v { font-size:14px; }
+.card-section { font-size:12px; font-weight:600; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px; }
+.defs { display:flex; flex-wrap:wrap; gap:5px; }
+.def { font-size:11px; padding:3px 8px; border-radius:6px; color:#334155; line-height:1.5; }
+{% endblock %}
+
+{% block header_content %}
+<h1>🔍 Website Audit — Leads</h1>
+<p>{{ audited }} sitios auditados de {{ total_leads }} leads totales • {{ now }} • {{ ok_sites }} funcionando • {{ error_sites }} con errores • ⏱️ {{ avg_rt }}ms promedio</p>
+{% endblock %}
+
+{% block content %}
+<div class="stats-bar">
+  <span class="stat-pill">📊 <strong>{{ audited }}</strong> auditados</span>
+  <span class="stat-pill">✅ <strong>{{ ok_sites }}</strong> funcionando</span>
+  <span class="stat-pill">❌ <strong>{{ error_sites }}</strong> con error</span>
+  <span class="stat-pill">⏱️ <strong>{{ avg_rt }}</strong>ms promedio</span>
+  <span class="stat-pill">📅 <strong>{{ with_booking }}</strong> con reservas</span>
+  <span class="stat-pill">💬 <strong>{{ with_whatsapp }}</strong> WhatsApp</span>
+</div>
+
+<div class="ranking-legend">
+  <h3>¿Cómo leer esta auditoría?</h3>
+  <p>Los leads están ordenados por su <strong>Lead Score</strong> (potencial de negocio). El <strong>Web Score</strong> (0-100) evalúa la salud técnica actual del sitio. Una discrepancia (Lead Score alto + Web Score bajo) representa la oportunidad perfecta para una venta de servicios de optimización o rediseño.</p>
+</div>
+
+{% for card in cards %}
+<div class="card">
+  <div class="card-header">
+    <div>
+      <div class="card-title">{{ card.name }} <span style="font-size:12px; font-weight:normal; color:{{ card.lead_color }}; border:1px solid {{ card.lead_color }}; padding:1px 6px; border-radius:10px; margin-left:8px;">{{ card.lead_tier }} Lead ({{ card.lead_score }})</span></div>
+      <div class="card-url"><a href="{{ card.url }}" target="_blank">{{ card.url[:60] }}</a></div>
+      <div class="card-meta">{{ card.industry }} &middot; {{ card.city }} &middot; {{ card.phone }}</div>
+    </div>
+    <div style="text-align:right;">
+      <div class="card-score" style="color:{{ card.score_color }}">{{ card.score }}</div>
+      <div style="font-size:10px; color:#94a3b8; font-weight:600; text-transform:uppercase;">Web Score</div>
+    </div>
+  </div>
+
+  <div class="card-stats">
+    <div class="cs"><span class="cs-v" style="color:{{ card.status_color }}">{{ card.status_emoji }}</span><span class="cs-l">{{ card.code }} &middot; {{ card.rt }}ms</span></div>
+    <div class="cs"><span class="cs-v">{{ '🔒' if card.ssl else '🔓' }}</span><span class="cs-l">{{ 'HTTPS' if card.ssl else 'No SSL' }}</span></div>
+    <div class="cs"><span class="cs-v">📅</span><span class="cs-l">{{ card.booking_str }}</span></div>
+    <div class="cs"><span class="cs-v">🖼️</span><span class="cs-l">{{ card.imgs_html }}</span></div>
+    <div class="cs"><span class="cs-v">📱</span><span class="cs-l">{{ card.mobile_str }}</span></div>
+    <div class="cs"><span class="cs-v">🏗️</span><span class="cs-l">{{ card.tech }}</span></div>
+    <div class="cs"><span class="cs-v">📞</span><span class="cs-l">{{ card.contact_icons if card.contact_icons else 'Sin contacto' }}</span></div>
+    <div class="cs"><span class="cs-v">📄</span><span class="cs-l">{{ card.seo_title }}</span></div>
+  </div>
+
+  <div class="card-section">Mejoras detectadas</div>
+  <div class="defs">
+    {% for imp in card.improvements %}
+    {% set icon = imp[:2] if imp|length > 2 else '•' %}
+    {% set bg = score_bg.get(icon, '#f8fafc') %}
+    <span class="def" style="background:{{ bg }}">{{ imp }}</span>
+    {% endfor %}
+  </div>
+</div>
+{% endfor %}
+{% endblock %}
+
+{% block footer_text %}Lead Extractor &middot; Website Audit{% endblock %}
