@@ -7,6 +7,8 @@ from typing import Dict, Optional
 
 import requests
 
+from booking_data import BOOKING_DOMAINS, BOOKING_SKIP
+
 logger = logging.getLogger(__name__)
 
 
@@ -131,27 +133,15 @@ class Enricher:
                     break
 
             # ── Booking/Reservation Systems ──
-            booking_domains = [
-                "agendapro.com", "setmore.com", "tuu.cl",
-                "calendly.com", "acuityscheduling.com", "reservo.cl",
-                "reservas.cl", "simplybook.me", "bookingsystem",
-                "bookeo.com", "appointmentplus.com", "youcanbook.me",
-                "situdy.com", "reservaenlinea.cl", "turnero.cl",
-                "agendaonline.cl", "timify.com", "superbook",
-                "wix.com/book", "squareup.com/appointments",
-            ]
-            booking_skip = {"terminos", "terms", "condiciones", "conditions",
-                           "privacy", "privacidad", "legal", "aviso-legal",
-                           "cookies", "blog", "faq", "ayuda", "help"}
             seen_bookings = set()
-            for domain in booking_domains:
+            for domain in BOOKING_DOMAINS.keys():
                 for m in re.finditer(
                     r'https?://[^"\'<> ]*' + re.escape(domain) + r'[^"\'<> ]*',
                     html,
                 ):
                     url = m.group(0)
                     url_lower = url.lower()
-                    if any(skip in url_lower for skip in booking_skip):
+                    if any(skip in url_lower for skip in BOOKING_SKIP):
                         continue
                     if url not in seen_bookings:
                         seen_bookings.add(url)

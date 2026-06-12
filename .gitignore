@@ -7,3 +7,8 @@ dist/
 build/
 leads_output/
 .env.local
+# Archives and build artifacts
+leads_output.zip
+files.zip
+.venv/
+venv/

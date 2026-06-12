@@ -13,30 +13,9 @@ from urllib.parse import urlparse
 
 import requests
 
-logger = logging.getLogger(__name__)
+from booking_data import BOOKING_DOMAINS, BOOKING_SKIP
 
-BOOKING_DOMAINS = {
-    "agendapro.com": "AgendaPro",
-    "setmore.com": "Setmore",
-    "tuu.cl": "TUU",
-    "calendly.com": "Calendly",
-    "acuityscheduling.com": "Acuity",
-    "reservo.cl": "Reservo",
-    "reservas.cl": "Reservas",
-    "simplybook.me": "SimplyBook",
-    "bookeo.com": "Bookeo",
-    "youcanbook.me": "YouCanBook",
-    "situdy.com": "Situdy",
-    "turnero.cl": "Turnero",
-    "timify.com": "Timify",
-    "squareup.com/appointments": "Square Appointments",
-    "wix.com/book": "Wix Bookings",
-    "mibarbed.com": "MiBarbEd",
-    "reservaenlinea.cl": "ReservaEnLinea",
-    "agendaonline.cl": "AgendaOnline",
-    "superbook": "SuperBook",
-    "zenbooking": "ZenBooking",
-}
+logger = logging.getLogger(__name__)
 
 CMS_PATTERNS = {
     "WordPress": [r"wp-content", r"wp-json", r"wp-includes", r"wordpress"],
@@ -53,14 +32,6 @@ CMS_PATTERNS = {
     "AgendaPro": [r"agendapro\.com"],
     "MiNegocio": [r"sitemi\.cl"],
 }
-
-BOOKING_SKIP = {
-    "terminos", "terms", "condiciones", "conditions",
-    "privacy", "privacidad", "legal", "aviso-legal",
-    "cookies", "blog", "faq", "ayuda", "help",
-    "login", "registro", "register", "signin",
-}
-
 
 class WebsiteAnalyzer:
     """Analyze a business website for quality signals and improvements."""
