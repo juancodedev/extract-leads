@@ -1,7 +1,7 @@
 """
 Tests for fuzzy deduplication of leads by business name.
 """
-import pytest
+
 from pipeline import deduplicate_leads
 
 
@@ -39,8 +39,8 @@ class TestDeduplication:
     def test_fuzzy_match_merged(self):
         """Names that differ slightly are merged."""
         leads = [
-            make_lead("Barberia El Corte", score=85),       # without accent
-            make_lead("Barbería El Corte", score=60),        # with accent
+            make_lead("Barberia El Corte", score=85),  # without accent
+            make_lead("Barbería El Corte", score=60),  # with accent
         ]
         result = deduplicate_leads(leads)
         # "barberia el corte" vs "barbería el corte" → token_sort_ratio should be very high
@@ -60,9 +60,9 @@ class TestDeduplication:
         # Actually token_sort_ratio sorts tokens, then compares as strings. Let me think...
         # Sorted: "belleza peluquería spa" vs "belleza peluquería" → these are very close but
         # the extra "spa" will cause partial ratio. Actually let me verify: token_sort_ratio
-        # sorts tokens alphabetically then does partial_ratio. 
+        # sorts tokens alphabetically then does partial_ratio.
         # String1: "belleza peluqueria spa", String2: "belleza peluqueria"
-        # partial_ratio("belleza peluqueria spa", "belleza peluqueria") 
+        # partial_ratio("belleza peluqueria spa", "belleza peluqueria")
         # The shorter (String2) is a substring of the longer → 100% match.
         assert len(result) == 1
         assert result[0]["lead_score"] == 90
@@ -113,7 +113,7 @@ class TestDeduplication:
         ]
         result = deduplicate_leads(leads, threshold=100)
         # First two merge, third kept because accent difference breaks 100% match
-        # Actually "Barbería El Corte" vs "Barberia El Corte" — token_sort sorts 
+        # Actually "Barbería El Corte" vs "Barberia El Corte" — token_sort sorts
         # "corte el barbería" vs "corte el barberia" — these differ by one char (í vs i)
         # partial_ratio would be very high but not 100
         assert len(result) == 2

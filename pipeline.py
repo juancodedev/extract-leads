@@ -5,6 +5,7 @@ Lead extraction pipeline core.
 Contains only run_pipeline() — the pure extraction logic.
 CLI, config loading, and output functions live in sibling modules.
 """
+
 import asyncio
 import logging
 import math
@@ -31,7 +32,7 @@ DUP_THRESHOLD = 85
 
 def deduplicate_leads(leads: list[dict], threshold: int = DUP_THRESHOLD) -> list[dict]:
     """Fuzzy-deduplicate leads by business name, keeping highest-scored lead."""
-    seen = []
+    seen: list[str] = []
     unique = []
     for lead in sorted(leads, key=lambda x: x.get("lead_score", 0), reverse=True):
         name = (lead.get("business_name") or "").lower()
@@ -138,14 +139,18 @@ async def run_pipeline(
 
                     # Enrich all leads in this batch in parallel
                     if lead_batch:
-                        enrich_tasks = [_enrich_lead(lead, enricher, hunter_key) for lead in lead_batch]
+                        enrich_tasks = [
+                            _enrich_lead(lead, enricher, hunter_key) for lead in lead_batch
+                        ]
                         enriched = await asyncio.gather(*enrich_tasks, return_exceptions=True)
 
                         for lead, result in zip(lead_batch, enriched, strict=True):
                             if isinstance(result, Exception):
-                                logger.debug("Enrichment failed for %s: %s", lead["business_name"], result)
+                                logger.debug(
+                                    "Enrichment failed for %s: %s", lead["business_name"], result
+                                )
                             else:
-                                lead.update(result)
+                                lead.update(result)  # type: ignore[arg-type]
 
                             lead = scorer.score(lead)
                             all_leads.append(lead)
@@ -161,7 +166,8 @@ async def run_pipeline(
             if per_industry_limit and industry_leads >= per_industry_limit:
                 logger.info(
                     "Reached %d leads for '%s', moving to next",
-                    industry_leads, industry.get("name"),
+                    industry_leads,
+                    industry.get("name"),
                 )
 
         if pbar:
@@ -169,7 +175,9 @@ async def run_pipeline(
 
         # --- DEEP AUDITS ---
         if all_leads and (do_seo or do_ads or do_ig_web):
-            top_for_audit = sorted(all_leads, key=lambda x: x.get("lead_score", 0), reverse=True)[:10]
+            top_for_audit = sorted(all_leads, key=lambda x: x.get("lead_score", 0), reverse=True)[
+                :10
+            ]
             logger.info("Realizando auditorías profundas para los top 10 prospectos...")
 
             if do_seo and analyzer:
@@ -180,11 +188,15 @@ async def run_pipeline(
 
                 if audit_tasks:
                     audit_results = await asyncio.gather(*audit_tasks, return_exceptions=True)
-                    for lead, result in zip([lead for lead in top_for_audit if lead.get("website")], audit_results, strict=True):
+                    for lead, result in zip(
+                        [lead for lead in top_for_audit if lead.get("website")],
+                        audit_results,
+                        strict=True,
+                    ):
                         if isinstance(result, Exception):
                             logger.debug("Audit failed for %s: %s", lead["business_name"], result)
                         else:
-                            lead.update(result)
+                            lead.update(result)  # type: ignore[arg-type]
 
             for lead in top_for_audit:
                 if do_ads:
@@ -198,7 +210,7 @@ async def run_pipeline(
     return all_leads
 
 
-async def _enrich_lead(lead: dict, enricher: 'Enricher', hunter_key: str) -> dict:
+async def _enrich_lead(lead: dict, enricher: "Enricher", hunter_key: str) -> dict:
     """Enrich a single lead with email + website scan."""
     updates = {}
     if lead["website"] and hunter_key:
@@ -215,7 +227,7 @@ async def _enrich_lead(lead: dict, enricher: 'Enricher', hunter_key: str) -> dic
         updates["instagram_handle"] = f"@{ig}" if ig and not ig.startswith("@") else ig
         updates["linkedin_url"] = scan.get("linkedin") or ""
         updates["whatsapp_link"] = scan.get("whatsapp") or ""
-        booking = scan.get("booking_links", [])
+        booking: list[str] = scan.get("booking_links", [])
         updates["booking_links"] = " | ".join(booking) if booking else ""
 
     # WhatsApp fallback from phone
@@ -231,7 +243,7 @@ async def _enrich_lead(lead: dict, enricher: 'Enricher', hunter_key: str) -> dic
     return updates
 
 
-async def _audit_lead(lead: dict, analyzer: 'WebsiteAnalyzer', scorer: 'LeadScorer') -> dict:
+async def _audit_lead(lead: dict, analyzer: "WebsiteAnalyzer", scorer: "LeadScorer") -> dict:
     """Run SEO audit on a single lead."""
     try:
         audit_data = await analyzer.analyze(lead["website"])

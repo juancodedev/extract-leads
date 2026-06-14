@@ -1,7 +1,7 @@
 """
 Tests for LeadScorer — goal-based scoring, tier assignment, industry classification.
 """
-import pytest
+
 from lead_scorer import LeadScorer
 from tests.conftest import make_lead
 
@@ -184,8 +184,12 @@ class TestTierBoundaries:
     def test_minimal_lead_is_cold(self, base_config):
         scorer = LeadScorer(base_config, goal="general")
         lead = make_lead(
-            website="", phone="", google_rating=None, google_type="",
-            city="Maipú", address="",
+            website="",
+            phone="",
+            google_rating=None,
+            google_type="",
+            city="Maipú",
+            address="",
         )
         result = scorer.score(lead)
         # base 50 only → COOL (40-59)
@@ -208,15 +212,11 @@ class TestIndustryClassification:
         assert result == "Barbería"
 
     def test_match_by_name(self, base_config):
-        result = LeadScorer.classify_industry(
-            ["store"], "Café del Centro", base_config
-        )
+        result = LeadScorer.classify_industry(["store"], "Café del Centro", base_config)
         assert result == "Cafetería"
 
     def test_no_match_returns_first_type(self, base_config):
-        result = LeadScorer.classify_industry(
-            ["electronics_store"], "Tech Shop", base_config
-        )
+        result = LeadScorer.classify_industry(["electronics_store"], "Tech Shop", base_config)
         assert result == "Electronics Store"  # title-cased first type
 
 

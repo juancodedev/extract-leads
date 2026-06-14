@@ -2,10 +2,12 @@
 Website analyzer for leads - checks availability, SEO, booking systems,
 images, performance, and generates actionable improvement suggestions.
 """
+
 import asyncio
 import logging
 import re
 import time
+from typing import Any
 from urllib.parse import urlparse
 
 import aiohttp
@@ -51,7 +53,9 @@ TECH_YELLOW_THRESHOLD = 50
 class WebsiteAnalyzer:
     """Analyze a business website for quality signals and improvements."""
 
-    def __init__(self, session: aiohttp.ClientSession, timeout: int = 15, config: dict | None = None):
+    def __init__(
+        self, session: aiohttp.ClientSession, timeout: int = 15, config: dict | None = None
+    ):
         self.session = session
         self.timeout = timeout
         self._sem = asyncio.Semaphore(10)
@@ -59,9 +63,9 @@ class WebsiteAnalyzer:
         self.slow_threshold = sc_cfg.get("slow_ms", SLOW_THRESHOLD_MS)
         self.warn_threshold = sc_cfg.get("warn_ms", WARN_THRESHOLD_MS)
 
-    async def analyze(self, url: str) -> dict:
+    async def analyze(self, url: str) -> dict[str, Any]:
         """Run full analysis on a website URL."""
-        result = {
+        result: dict[str, Any] = {
             "url": url,
             "url_clean": self._clean_url(url),
             "status": "error",
@@ -84,11 +88,14 @@ class WebsiteAnalyzer:
 
         start = time.time()
         try:
-            async with self._sem, self.session.get(
-                clean_url,
-                timeout=aiohttp.ClientTimeout(total=self.timeout),
-                allow_redirects=True,
-            ) as resp:
+            async with (
+                self._sem,
+                self.session.get(
+                    clean_url,
+                    timeout=aiohttp.ClientTimeout(total=self.timeout),
+                    allow_redirects=True,
+                ) as resp,
+            ):
                 html = await resp.text()
                 elapsed = int((time.time() - start) * 1000)
 
@@ -100,7 +107,7 @@ class WebsiteAnalyzer:
                 result["final_url"] = str(resp.url)
 
                 result.update(self._analyze_html(html, clean_url))
-                result.update(self._analyze_headers(resp.headers))
+                result.update(self._analyze_headers(resp.headers))  # type: ignore[arg-type]
                 result["improvements"] = self._generate_improvements(result)
 
         except (aiohttp.ClientError, asyncio.TimeoutError) as e:
@@ -169,12 +176,14 @@ class WebsiteAnalyzer:
         # Meta description
         m = re.search(
             r'<meta[^>]+name=["\']description["\'][^>]+content=["\']([^"\']*)["\']',
-            html, re.IGNORECASE,
+            html,
+            re.IGNORECASE,
         )
         if not m:
             m = re.search(
                 r'<meta[^>]+content=["\']([^"\']*)["\'][^>]+name=["\']description["\']',
-                html, re.IGNORECASE,
+                html,
+                re.IGNORECASE,
             )
         if m:
             desc = m.group(1).strip()
@@ -206,7 +215,7 @@ class WebsiteAnalyzer:
             seo["has_robots"] = True
 
         # Sitemap
-        if re.search(r'sitemap', html, re.IGNORECASE):
+        if re.search(r"sitemap", html, re.IGNORECASE):
             seo["has_sitemap"] = True
 
         # Favicon
@@ -214,8 +223,9 @@ class WebsiteAnalyzer:
             seo["has_favicon"] = True
 
         # Schema.org
-        if re.search(r'schema\.org', html, re.IGNORECASE) or \
-           re.search(r'application/ld\+json', html, re.IGNORECASE):
+        if re.search(r"schema\.org", html, re.IGNORECASE) or re.search(
+            r"application/ld\+json", html, re.IGNORECASE
+        ):
             seo["has_schema_org"] = True
 
         return seo
@@ -239,7 +249,7 @@ class WebsiteAnalyzer:
         }
 
     def _analyze_booking(self, html: str, url: str) -> dict:
-        result = {
+        result: dict[str, Any] = {
             "has_booking": False,
             "systems": [],
             "links": [],
@@ -264,25 +274,46 @@ class WebsiteAnalyzer:
 
     def _analyze_contact(self, html: str) -> dict:
         return {
-            "has_whatsapp": bool(re.search(
-                r'(wa\.me|api\.whatsapp|whatsapp\.com/send)', html, re.IGNORECASE,
-            )),
-            "has_contact_form": bool(re.search(
-                r'(<form[^>]*>.*?</form>)', html, re.DOTALL | re.IGNORECASE,
-            )),
-            "has_email_link": bool(re.search(
-                r'mailto:[a-zA-Z0-9@._-]+', html,
-            )),
-            "has_phone_link": bool(re.search(
-                r'tel:\+?\d+', html,
-            )),
-            "has_social_links": bool(re.search(
-                r'(facebook\.com|instagram\.com|linkedin\.com)',
-                html, re.IGNORECASE,
-            )),
-            "has_google_maps_embed": bool(re.search(
-                r'google\.com/maps|maps\.google', html, re.IGNORECASE,
-            )),
+            "has_whatsapp": bool(
+                re.search(
+                    r"(wa\.me|api\.whatsapp|whatsapp\.com/send)",
+                    html,
+                    re.IGNORECASE,
+                )
+            ),
+            "has_contact_form": bool(
+                re.search(
+                    r"(<form[^>]*>.*?</form>)",
+                    html,
+                    re.DOTALL | re.IGNORECASE,
+                )
+            ),
+            "has_email_link": bool(
+                re.search(
+                    r"mailto:[a-zA-Z0-9@._-]+",
+                    html,
+                )
+            ),
+            "has_phone_link": bool(
+                re.search(
+                    r"tel:\+?\d+",
+                    html,
+                )
+            ),
+            "has_social_links": bool(
+                re.search(
+                    r"(facebook\.com|instagram\.com|linkedin\.com)",
+                    html,
+                    re.IGNORECASE,
+                )
+            ),
+            "has_google_maps_embed": bool(
+                re.search(
+                    r"google\.com/maps|maps\.google",
+                    html,
+                    re.IGNORECASE,
+                )
+            ),
         }
 
     def _analyze_content(self, html: str) -> dict:
@@ -292,35 +323,54 @@ class WebsiteAnalyzer:
 
         return {
             "word_count": word_count,
-            "has_cta": bool(re.search(
-                r'(reservar|agendar|comprar|contactar|llamar|comenzar|empezar|solicitar|cotizar|más info|ver más|lo quiero)',
-                html, re.IGNORECASE,
-            )),
-            "has_testimonials": bool(re.search(
-                r'(testimonio|reseña|opinión|cliente dice|recomiendo|★★★★★|estrellas)',
-                html, re.IGNORECASE,
-            )),
-            "has_blog": bool(re.search(
-                r'(/blog|/noticias|articulo|posts?\b)',
-                html, re.IGNORECASE,
-            )),
-            "has_prices": bool(re.search(
-                r'(CLP|UF|precio|valor|desde \$\$|tarifa|cuota)',
-                html, re.IGNORECASE,
-            )),
-            "has_gallery": bool(re.search(
-                r'(galería|galeria|portfolio|trabajos|proyectos)',
-                html, re.IGNORECASE,
-            )),
+            "has_cta": bool(
+                re.search(
+                    r"(reservar|agendar|comprar|contactar|llamar|comenzar|empezar|solicitar|cotizar|más info|ver más|lo quiero)",
+                    html,
+                    re.IGNORECASE,
+                )
+            ),
+            "has_testimonials": bool(
+                re.search(
+                    r"(testimonio|reseña|opinión|cliente dice|recomiendo|★★★★★|estrellas)",
+                    html,
+                    re.IGNORECASE,
+                )
+            ),
+            "has_blog": bool(
+                re.search(
+                    r"(/blog|/noticias|articulo|posts?\b)",
+                    html,
+                    re.IGNORECASE,
+                )
+            ),
+            "has_prices": bool(
+                re.search(
+                    r"(CLP|UF|precio|valor|desde \$\$|tarifa|cuota)",
+                    html,
+                    re.IGNORECASE,
+                )
+            ),
+            "has_gallery": bool(
+                re.search(
+                    r"(galería|galeria|portfolio|trabajos|proyectos)",
+                    html,
+                    re.IGNORECASE,
+                )
+            ),
         }
 
     def _analyze_mobile(self, html: str) -> dict:
         return {
-            "has_viewport": bool(re.search(
-                r'name=["\']viewport["\']', html, re.IGNORECASE,
-            )),
-            "has_responsive_css": bool(re.search(
-                r'@media\s*\(', html),
+            "has_viewport": bool(
+                re.search(
+                    r'name=["\']viewport["\']',
+                    html,
+                    re.IGNORECASE,
+                )
+            ),
+            "has_responsive_css": bool(
+                re.search(r"@media\s*\(", html),
             ),
         }
 
@@ -429,7 +479,9 @@ class WebsiteAnalyzer:
         else:
             improvements.append(f"🖼️ {img_total} imágenes en página")
             if img_no_alt > 0:
-                improvements.append(f"🖼️ {img_no_alt} imágenes sin atributo alt (accesibilidad + SEO)")
+                improvements.append(
+                    f"🖼️ {img_no_alt} imágenes sin atributo alt (accesibilidad + SEO)"
+                )
         if not images.get("has_lazy_loading"):
             improvements.append("📸 Falta lazy loading en imágenes (mejora velocidad)")
 
@@ -482,7 +534,9 @@ class WebsiteAnalyzer:
         # CMS
         tech = analysis.get("tech_stack", [])
         if "UENI" in tech:
-            improvements.append("🏗️ Creado con UENI — considerar migrar a plataforma más profesional")
+            improvements.append(
+                "🏗️ Creado con UENI — considerar migrar a plataforma más profesional"
+            )
         if "WordPress" not in tech and "Custom" not in tech:
             pass  # No strong opinion
 

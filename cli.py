@@ -1,6 +1,7 @@
 """
 CLI entry point for the Lead Extractor pipeline.
 """
+
 import argparse
 import asyncio
 import logging
@@ -40,9 +41,7 @@ def _print_dry_run(config, args):
     regions = {loc.get("region", "") for loc in locations}
 
     # Search combinations = sum over all industries of kws × locations
-    total_combos = sum(
-        len(ind.get("keywords", [])) * len(locations) for ind in industries
-    )
+    total_combos = sum(len(ind.get("keywords", [])) * len(locations) for ind in industries)
 
     # Industry names
     industry_names = [ind.get("name", "Unknown") for ind in industries]
@@ -120,11 +119,9 @@ async def main():
     parser.add_argument(
         "--audit",
         help="Run website audit on leads CSV and output HTML report "
-             "(usage: --audit leads.csv or --audit output.html --from-csv leads.csv)",
+        "(usage: --audit leads.csv or --audit output.html --from-csv leads.csv)",
     )
-    parser.add_argument(
-        "--version", action="version", version="lead-extractor 0.2.0"
-    )
+    parser.add_argument("--version", action="version", version="lead-extractor 0.2.0")
     parser.add_argument(
         "--goal",
         choices=["web", "seo", "ads", "general"],
@@ -194,7 +191,9 @@ async def main():
     api_key = args.google_key or os.environ.get("GOOGLE_PLACES_API_KEY", "")
     if not api_key:
         print("\n🔑 No se detectó GOOGLE_PLACES_API_KEY en .env o variables de entorno.")
-        api_key = input("Introduce tu API Key de Google Places (o presiona Enter para cancelar): ").strip()
+        api_key = input(
+            "Introduce tu API Key de Google Places (o presiona Enter para cancelar): "
+        ).strip()
         if not api_key:
             logger.error("Se requiere la API Key de Google Places para continuar.")
             sys.exit(1)
@@ -223,8 +222,14 @@ async def main():
 
     # Run
     leads = await run_pipeline(
-        config, api_key, hunter_key, args.limit,
-        goal=args.goal, do_seo=args.seo, do_ads=args.ads, do_ig_web=args.ig_web
+        config,
+        api_key,
+        hunter_key,
+        args.limit,
+        goal=args.goal,
+        do_seo=args.seo,
+        do_ads=args.ads,
+        do_ig_web=args.ig_web,
     )
 
     if not leads:
@@ -239,9 +244,9 @@ async def main():
 
 def run_interactive():
     """Interactive mode: asks questions, builds config, and runs the prospecting engine."""
-    print("\n" + "="*55)
+    print("\n" + "=" * 55)
     print(" 🚀 PROSPECTING ENGINE & BUSINESS AUDITOR")
-    print("="*55)
+    print("=" * 55)
     print("\n--- CONFIGURACIÓN DE BÚSQUEDA ---")
 
     # API key
@@ -274,11 +279,9 @@ def run_interactive():
     elif selected == str(len(available_industries) + 1):
         custom_name = input("  Nombre de la industria: ").strip()
         custom_kws = input("  Palabras clave (separadas por coma): ").strip().split(",")
-        chosen_industries.append({
-            "name": custom_name,
-            "keywords": [k.strip() for k in custom_kws],
-            "bonus_score": 5
-        })
+        chosen_industries.append(
+            {"name": custom_name, "keywords": [k.strip() for k in custom_kws], "bonus_score": 5}
+        )
     else:
         for s in selected.split(","):
             s = s.strip()
@@ -326,9 +329,17 @@ def run_interactive():
 
     # --- ADVANCED AUDIT OPTIONS ---
     print("\n🛠  AUDITORÍAS ADICIONALES (Para los mejores prospectos):")
-    do_seo = input("  ¿Realizar auditoría SEO técnica profunda? (s/n, default: s): ").strip().lower() != "n"
-    do_ads = input("  ¿Analizar anuncios en Meta Ads Library? (s/n, default: n): ").strip().lower() == "s"
-    do_ig_web = input("  ¿Generar prototipo Instagram → Web? (s/n, default: n): ").strip().lower() == "s"
+    do_seo = (
+        input("  ¿Realizar auditoría SEO técnica profunda? (s/n, default: s): ").strip().lower()
+        != "n"
+    )
+    do_ads = (
+        input("  ¿Analizar anuncios en Meta Ads Library? (s/n, default: n): ").strip().lower()
+        == "s"
+    )
+    do_ig_web = (
+        input("  ¿Generar prototipo Instagram → Web? (s/n, default: n): ").strip().lower() == "s"
+    )
 
     # Limit (fixed: removed duplicate try/except bug from original)
     limit_str = input("\n🔢 ¿Cuántos leads quieres extraer? (default: 100): ").strip()
@@ -392,10 +403,18 @@ def run_interactive():
     }
 
     # Run
-    leads = asyncio.run(run_pipeline(
-        config, api_key, hunter_key, limit,
-        goal=goal, do_seo=do_seo, do_ads=do_ads, do_ig_web=do_ig_web
-    ))
+    leads = asyncio.run(
+        run_pipeline(
+            config,
+            api_key,
+            hunter_key,
+            limit,
+            goal=goal,
+            do_seo=do_seo,
+            do_ads=do_ads,
+            do_ig_web=do_ig_web,
+        )
+    )
 
     if not leads:
         logger.warning("No se encontraron leads. Intenta con más industrias o ciudades.")

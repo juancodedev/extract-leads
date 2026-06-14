@@ -7,6 +7,7 @@ Returns the lead with lead_score, lead_tier, and scoring_notes added.
 All default values live in DEFAULT_CONFIG (config_loader.py).
 Config keys are guaranteed present by _merge_with_defaults().
 """
+
 import re as _re
 
 
@@ -67,10 +68,7 @@ class LeadScorer:
         flags = {}
 
         # Industry bonus
-        industry_text = (
-            (lead.get("industry", "") + " " + lead.get("google_type", ""))
-            .lower()
-        )
+        industry_text = (lead.get("industry", "") + " " + lead.get("google_type", "")).lower()
         for keyword, bonus, ind_name in self.industry_bonuses:
             if keyword in industry_text:
                 score += bonus
@@ -125,7 +123,7 @@ class LeadScorer:
                 score += bonus
                 notes.append(f"Rating < {threshold} ({rating}): Needs reputation boost (+{bonus})")
 
-        else: # General quality-based scoring
+        else:  # General quality-based scoring
             if lead.get("website"):
                 score += self.weights.get("website", 15)
                 notes.append(f"Website (+{self.weights.get('website', 15)})")
@@ -137,8 +135,12 @@ class LeadScorer:
         # Common signals
         # Multiple contact channels
         channel_fields = [
-            "phone", "email", "website",
-            "facebook_url", "instagram_handle", "linkedin_url",
+            "phone",
+            "email",
+            "website",
+            "facebook_url",
+            "instagram_handle",
+            "linkedin_url",
         ]
         channel_count = sum(1 for f in channel_fields if lead.get(f))
         if channel_count >= 2:
@@ -192,7 +194,7 @@ class LeadScorer:
         """Map a numeric score to a tier name."""
         for tier_name, (low, high) in self.tiers.items():
             if low <= score <= high:
-                return tier_name.upper()
+                return tier_name.upper()  # type: ignore[no-any-return]
         return "COLD"
 
     @staticmethod
@@ -213,7 +215,7 @@ class LeadScorer:
         for industry in config.get("search", {}).get("industries", []):
             for keyword in industry.get("keywords", []):
                 if keyword.lower() in combined:
-                    return industry["name"]
+                    return industry["name"]  # type: ignore[no-any-return]
 
         if business_types:
             raw = business_types[0].replace("_", " ").title()
@@ -228,7 +230,7 @@ class LeadScorer:
         addr_lower = address.lower()
 
         # Remove postal codes (e.g., "8780000 La Granja" → "La Granja")
-        cleaned = _re.sub(r'\b\d{5,7}\b', '', addr_lower).strip()
+        cleaned = _re.sub(r"\b\d{5,7}\b", "", addr_lower).strip()
 
         # Check each part of the address against known locations
         parts = [p.strip() for p in cleaned.split(",")]
@@ -237,12 +239,12 @@ class LeadScorer:
         for loc in config.get("search", {}).get("locations", []):
             city_lower = loc["city"].lower()
             if city_lower in cleaned:
-                return loc["city"]
+                return loc["city"]  # type: ignore[no-any-return]
 
         # Fallback: second-to-last part of comma-separated address
         if len(parts) >= 2:
             candidate = parts[-2].strip()
             # Strip numbers/zip remnants from candidate
-            candidate = _re.sub(r'^\d+\s*', '', candidate).strip()
+            candidate = _re.sub(r"^\d+\s*", "", candidate).strip()
             return candidate if candidate else parts[-1].strip()
         return parts[0].strip() if parts else ""

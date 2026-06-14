@@ -35,10 +35,23 @@ BOOKING_DOMAINS: dict[str, str] = {
 
 
 BOOKING_SKIP: set[str] = {
-    "terminos", "terms", "condiciones", "conditions",
-    "privacy", "privacidad", "legal", "aviso-legal",
-    "cookies", "blog", "faq", "ayuda", "help",
-    "login", "registro", "register", "signin",
+    "terminos",
+    "terms",
+    "condiciones",
+    "conditions",
+    "privacy",
+    "privacidad",
+    "legal",
+    "aviso-legal",
+    "cookies",
+    "blog",
+    "faq",
+    "ayuda",
+    "help",
+    "login",
+    "registro",
+    "register",
+    "signin",
 }
 # Union of analyzer (17 terms) + enricher (13 terms) = 17 terms.
 # enricher was missing: login, registro, register, signin.

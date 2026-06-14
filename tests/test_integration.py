@@ -114,12 +114,15 @@ async def test_pipeline_extracts_and_scores_leads(base_config):
     places_search = {
         "status": "OK",
         "results": [
-            _make_place("p1", "Barbería Test Uno",
-                        "Av. Siempre Viva 123, Santiago", 4.5, 10,
-                        ["barber_shop", "hair_care"]),
-            _make_place("p2", "Café Test Dos",
-                        "Calle Falsa 456, Santiago", 4.0, 5,
-                        ["cafe"]),
+            _make_place(
+                "p1",
+                "Barbería Test Uno",
+                "Av. Siempre Viva 123, Santiago",
+                4.5,
+                10,
+                ["barber_shop", "hair_care"],
+            ),
+            _make_place("p2", "Café Test Dos", "Calle Falsa 456, Santiago", 4.0, 5, ["cafe"]),
         ],
         "next_page_token": None,
     }
@@ -132,12 +135,12 @@ async def test_pipeline_extracts_and_scores_leads(base_config):
         }
     }
 
-    mock_session = _build_mock_session(
-        _make_get_side_effect(places_search, places_detail)
-    )
+    mock_session = _build_mock_session(_make_get_side_effect(places_search, places_detail))
 
-    with patch("aiohttp.ClientSession", return_value=mock_session), \
-         patch("pipeline.tqdm", MagicMock()):
+    with (
+        patch("aiohttp.ClientSession", return_value=mock_session),
+        patch("pipeline.tqdm", MagicMock()),
+    ):
         leads = await run_pipeline(base_config, api_key="fake", goal="general")
 
     assert len(leads) == 2, "Expected exactly 2 leads"
@@ -159,25 +162,30 @@ async def test_deduplication_merges_similar_names(base_config):
     places_search = {
         "status": "OK",
         "results": [
-            _make_place("p1", "Barbería El Corte",
-                        "Av. Principal 100, Santiago", 4.8, 20,
-                        ["barber_shop"]),
-            _make_place("p2", "Barberia El Corte",  # accent dropped
-                        "Av. Principal 102, Santiago", 3.5, 3,
-                        ["barber_shop"]),
+            _make_place(
+                "p1", "Barbería El Corte", "Av. Principal 100, Santiago", 4.8, 20, ["barber_shop"]
+            ),
+            _make_place(
+                "p2",
+                "Barberia El Corte",  # accent dropped
+                "Av. Principal 102, Santiago",
+                3.5,
+                3,
+                ["barber_shop"],
+            ),
         ],
         "next_page_token": None,
     }
 
     mock_session = _build_mock_session(_make_get_side_effect(places_search))
 
-    with patch("aiohttp.ClientSession", return_value=mock_session), \
-         patch("pipeline.tqdm", MagicMock()):
+    with (
+        patch("aiohttp.ClientSession", return_value=mock_session),
+        patch("pipeline.tqdm", MagicMock()),
+    ):
         leads = await run_pipeline(base_config, api_key="fake", goal="general")
 
-    assert len(leads) == 1, (
-        f"Fuzzy dedup failed — expected 1 lead, got {len(leads)}"
-    )
+    assert len(leads) == 1, f"Fuzzy dedup failed — expected 1 lead, got {len(leads)}"
     # Higher-scored variant should survive
     assert leads[0]["business_name"] == "Barbería El Corte"
     assert leads[0]["google_rating"] == 4.8
@@ -198,7 +206,7 @@ async def test_pipeline_respects_limit(base_config):
     # Build a side_effect that returns a unique lead per location.
     location_names = {
         "Santiago": "Barbería Alpha",
-        "Maipú":   "Cafetería Beta",
+        "Maipú": "Cafetería Beta",
     }
 
     def get_side_effect(*args, **kwargs):
@@ -219,14 +227,17 @@ async def test_pipeline_respects_limit(base_config):
                 if loc_key in location:
                     name = loc_name
                     break
-            mock_resp.json = AsyncMock(return_value={
-                "status": "OK",
-                "results": [
-                    _make_place("px", name, f"Calle {loc_key}, {loc_key}",
-                                4.5, 10, ["barber_shop"]),
-                ],
-                "next_page_token": None,
-            })
+            mock_resp.json = AsyncMock(
+                return_value={
+                    "status": "OK",
+                    "results": [
+                        _make_place(
+                            "px", name, f"Calle {loc_key}, {loc_key}", 4.5, 10, ["barber_shop"]
+                        ),
+                    ],
+                    "next_page_token": None,
+                }
+            )
         elif "details" in url:
             mock_resp.json = AsyncMock(return_value={"result": {}})
         elif "hunter.io" in url:
@@ -239,10 +250,11 @@ async def test_pipeline_respects_limit(base_config):
 
     mock_session = _build_mock_session(get_side_effect)
 
-    with patch("aiohttp.ClientSession", return_value=mock_session), \
-         patch("pipeline.tqdm", MagicMock()):
-        leads = await run_pipeline(base_config, api_key="fake",
-                                    goal="general", limit=2)
+    with (
+        patch("aiohttp.ClientSession", return_value=mock_session),
+        patch("pipeline.tqdm", MagicMock()),
+    ):
+        leads = await run_pipeline(base_config, api_key="fake", goal="general", limit=2)
 
     assert len(leads) == 2, f"Limit not enforced: expected 2, got {len(leads)}"
 
@@ -256,9 +268,9 @@ async def test_seo_audit_populates_audit_data(base_config):
     places_search = {
         "status": "OK",
         "results": [
-            _make_place("p1", "Barbería SEO Test",
-                        "Av. SEO 123, Santiago", 4.5, 15,
-                        ["barber_shop"]),
+            _make_place(
+                "p1", "Barbería SEO Test", "Av. SEO 123, Santiago", 4.5, 15, ["barber_shop"]
+            ),
         ],
         "next_page_token": None,
     }
@@ -275,20 +287,21 @@ async def test_seo_audit_populates_audit_data(base_config):
     # This keeps the test focused on pipeline orchestration, not
     # the analyzer's complex HTTP/HTML parsing logic.
     mock_analyzer = AsyncMock()
-    mock_analyzer.analyze = AsyncMock(return_value={
-        "seo": {"has_h1": True, "has_meta_description": False},
-        "performance": {"load_time_ms": 1200},
-    })
-
-    mock_session = _build_mock_session(
-        _make_get_side_effect(places_search, places_detail)
+    mock_analyzer.analyze = AsyncMock(
+        return_value={
+            "seo": {"has_h1": True, "has_meta_description": False},
+            "performance": {"load_time_ms": 1200},
+        }
     )
 
-    with patch("aiohttp.ClientSession", return_value=mock_session), \
-         patch("pipeline.tqdm", MagicMock()), \
-         patch("pipeline.WebsiteAnalyzer", return_value=mock_analyzer):
-        leads = await run_pipeline(base_config, api_key="fake",
-                                    goal="seo", do_seo=True)
+    mock_session = _build_mock_session(_make_get_side_effect(places_search, places_detail))
+
+    with (
+        patch("aiohttp.ClientSession", return_value=mock_session),
+        patch("pipeline.tqdm", MagicMock()),
+        patch("pipeline.WebsiteAnalyzer", return_value=mock_analyzer),
+    ):
+        leads = await run_pipeline(base_config, api_key="fake", goal="seo", do_seo=True)
 
     assert len(leads) == 1
     assert "audit_data" in leads[0], "audit_data missing — SEO audit not run"
@@ -311,8 +324,10 @@ async def test_empty_results_handled_gracefully(base_config):
 
     mock_session = _build_mock_session(_make_get_side_effect(places_search))
 
-    with patch("aiohttp.ClientSession", return_value=mock_session), \
-         patch("pipeline.tqdm", MagicMock()):
+    with (
+        patch("aiohttp.ClientSession", return_value=mock_session),
+        patch("pipeline.tqdm", MagicMock()),
+    ):
         leads = await run_pipeline(base_config, api_key="fake", goal="general")
 
     assert leads == [], f"Expected empty list for ZERO_RESULTS, got {leads}"
@@ -332,8 +347,10 @@ async def test_pipeline_handles_api_errors(base_config):
 
     mock_session = _build_mock_session(_make_get_side_effect(places_search))
 
-    with patch("aiohttp.ClientSession", return_value=mock_session), \
-         patch("pipeline.tqdm", MagicMock()):
+    with (
+        patch("aiohttp.ClientSession", return_value=mock_session),
+        patch("pipeline.tqdm", MagicMock()),
+    ):
         leads = await run_pipeline(base_config, api_key="bad_key", goal="general")
 
     assert leads == [], f"Expected empty list on API error, got {len(leads)} leads"

@@ -1,9 +1,11 @@
 """
 Email and social media enrichment for leads.
 """
+
 import asyncio
 import logging
 import re
+from typing import Any
 
 import aiohttp
 
@@ -23,7 +25,12 @@ class Enricher:
     Social detection: parses website HTML for known social URLs.
     """
 
-    def __init__(self, hunter_api_key: str | None = None, session: aiohttp.ClientSession | None = None, config: dict | None = None):
+    def __init__(
+        self,
+        hunter_api_key: str | None = None,
+        session: aiohttp.ClientSession | None = None,
+        config: dict | None = None,
+    ):
         self.hunter_api_key = hunter_api_key
         self.session = session
         self._hunter_sem = asyncio.Semaphore(3)
@@ -34,21 +41,31 @@ class Enricher:
         self.max_retries = env_cfg.get("max_retries", 3)
         self.retry_backoff = env_cfg.get("retry_backoff", 1.5)
 
-    async def _fetch_with_retry(self, url: str, sem: asyncio.Semaphore, *,
-                                 params: dict = None, headers: dict = None,
-                                 timeout: int = 10, as_text: bool = False,
-                                 allow_redirects: bool = True) -> str:
+    async def _fetch_with_retry(
+        self,
+        url: str,
+        sem: asyncio.Semaphore,
+        *,
+        params: dict[str, Any] | None = None,
+        headers: dict[str, Any] | None = None,
+        timeout: int = 10,
+        as_text: bool = False,
+        allow_redirects: bool = True,
+    ) -> Any:
         """GET with exponential backoff on transient errors.
 
         Accepts an explicit semaphore so the caller chooses the right
         concurrency limit (hunter vs web).
         """
-        last_error = None
+        last_error: Exception | None = None
+        assert self.session is not None
         for attempt in range(self.max_retries):
             async with sem:
                 try:
                     async with self.session.get(
-                        url, params=params, headers=headers,
+                        url,
+                        params=params,
+                        headers=headers,
                         timeout=aiohttp.ClientTimeout(total=timeout),
                         allow_redirects=allow_redirects,
                     ) as resp:
@@ -56,12 +73,16 @@ class Enricher:
                 except (aiohttp.ClientError, asyncio.TimeoutError) as e:
                     last_error = e
                     if attempt < self.max_retries - 1:
-                        delay = self.retry_backoff ** attempt
+                        delay = self.retry_backoff**attempt
                         logger.debug(
                             "Retry %d/%d in %.1fs: %s",
-                            attempt + 1, self.max_retries, delay, e,
+                            attempt + 1,
+                            self.max_retries,
+                            delay,
+                            e,
                         )
                         await asyncio.sleep(delay)
+        assert last_error is not None
         raise last_error
 
     async def find_email(self, domain: str) -> str | None:
@@ -74,24 +95,27 @@ class Enricher:
 
         try:
             data = await self._fetch_with_retry(
-                url, self._hunter_sem, params=params, timeout=self.hunter_timeout,
+                url,
+                self._hunter_sem,
+                params=params,
+                timeout=self.hunter_timeout,
             )
             emails = data.get("data", {}).get("emails", [])
             if emails:
                 for email in emails:
                     if email.get("value"):
-                        return email["value"]
+                        return email["value"]  # type: ignore[no-any-return]
         except (aiohttp.ClientError, asyncio.TimeoutError) as e:
             logger.debug("Hunter.io lookup failed for %s: %s", domain, e)
 
         return None
 
-    async def scan_website(self, website: str, business_name: str = "") -> dict[str, str | None]:
+    async def scan_website(self, website: str, business_name: str = "") -> dict[str, Any]:
         """Scan website HTML for social media, WhatsApp, and booking links.
 
         Returns dict with: facebook, instagram, linkedin, whatsapp, booking_links.
         """
-        result = {
+        result: dict[str, Any] = {
             "facebook": None,
             "instagram": None,
             "linkedin": None,
@@ -113,8 +137,11 @@ class Enricher:
                 )
             }
             html = await self._fetch_with_retry(
-                website, self._web_sem, headers=headers,
-                timeout=self.website_scan_timeout, as_text=True,
+                website,
+                self._web_sem,
+                headers=headers,
+                timeout=self.website_scan_timeout,
+                as_text=True,
             )
         except (aiohttp.ClientError, asyncio.TimeoutError) as e:
             logger.debug("Website scan failed for %s: %s", website, e)
@@ -123,7 +150,7 @@ class Enricher:
         # ── Facebook ──
         fb_skip = {"share.php", "sharer", "plugins", "tr", "track", "events"}
         fb_patterns = [
-            r'(?:facebook\.com|fb\.com)/([a-zA-Z0-9._-]+)',
+            r"(?:facebook\.com|fb\.com)/([a-zA-Z0-9._-]+)",
             r'"fb:page_url"\s*:\s*"([^"]+)"',
             r'"facebook"\s*:\s*"([^"]+)"',
         ]
@@ -136,10 +163,20 @@ class Enricher:
                     break
 
         # ── Instagram ──
-        ig_skip = {"p", "explore", "accounts", "developer", "about",
-                   "rsrc.php", "static", "help", "legal", "terms"}
+        ig_skip = {
+            "p",
+            "explore",
+            "accounts",
+            "developer",
+            "about",
+            "rsrc.php",
+            "static",
+            "help",
+            "legal",
+            "terms",
+        }
         ig_patterns = [
-            r'instagram\.com/([a-zA-Z0-9._-]+)',
+            r"instagram\.com/([a-zA-Z0-9._-]+)",
             r'"instagram"\s*:\s*"([^"]+)"',
             r'"instagram_handle"\s*:\s*"([^"]+)"',
         ]
@@ -153,7 +190,7 @@ class Enricher:
 
         # ── LinkedIn ──
         li_patterns = [
-            r'linkedin\.com/(?:company|in)/([a-zA-Z0-9._-]+)',
+            r"linkedin\.com/(?:company|in)/([a-zA-Z0-9._-]+)",
             r'"linkedin"\s*:\s*"([^"]+)"',
         ]
         for p in li_patterns:
@@ -164,10 +201,10 @@ class Enricher:
 
         # ── WhatsApp ──
         wa_patterns = [
-            r'wa\.me/(\d+)',
-            r'api\.whatsapp\.com/send\?phone=(\d+)',
-            r'whatsapp\.com/send\?phone=(\d+)',
-            r'whatsapp\.com/c/([a-zA-Z0-9_-]+)',
+            r"wa\.me/(\d+)",
+            r"api\.whatsapp\.com/send\?phone=(\d+)",
+            r"whatsapp\.com/send\?phone=(\d+)",
+            r"whatsapp\.com/c/([a-zA-Z0-9_-]+)",
         ]
         for p in wa_patterns:
             m = re.search(p, html)

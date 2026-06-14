@@ -4,6 +4,7 @@ Shared test fixtures for lead extractor tests.
 Provides a minimal valid config dict matching what config_loader.DEFAULT_CONFIG
 would produce after merging, so tests don't need a real config.yaml file.
 """
+
 import pytest
 
 

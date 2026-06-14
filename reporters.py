@@ -1,6 +1,7 @@
 """
 Summary and HTML report generation for lead data.
 """
+
 import html as html_lib
 import logging
 import os
@@ -65,8 +66,8 @@ def export_html(leads: list[dict], output_path: str):
     # Sort leads by score descending
     leads = sorted(leads, key=lambda x: x.get("lead_score", 0), reverse=True)
 
-    tiers_count = {}
-    industries_count = {}
+    tiers_count: dict[str, int] = {}
+    industries_count: dict[str, int] = {}
     total = len(leads)
     phones = sum(1 for lead in leads if lead.get("phone"))
     websites = sum(1 for lead in leads if lead.get("website"))
@@ -89,7 +90,12 @@ def export_html(leads: list[dict], output_path: str):
     avg_rating = avg_rating / ratings_n if ratings_n else 0
 
     tier_colors = {"HOT": "#ef4444", "WARM": "#f59e0b", "COOL": "#3b82f6", "COLD": "#6b7280"}
-    tier_bg = {"HOT": "rgba(239,68,68,0.1)", "WARM": "rgba(245,158,11,0.1)", "COOL": "rgba(59,130,246,0.1)", "COLD": "rgba(107,114,128,0.1)"}
+    tier_bg = {
+        "HOT": "rgba(239,68,68,0.1)",
+        "WARM": "rgba(245,158,11,0.1)",
+        "COOL": "rgba(59,130,246,0.1)",
+        "COLD": "rgba(107,114,128,0.1)",
+    }
 
     rows = []
     for i, lead in enumerate(leads, 1):
@@ -117,9 +123,9 @@ def export_html(leads: list[dict], output_path: str):
             contact_icons += f'<a href="{html_lib.escape(site_url, quote=True)}" target="_blank" class="contact-badge" style="color: #3b82f6;" title="{html_lib.escape(website, quote=True)}"><span class="material-icons">language</span></a>'
         if ig:
             ig_clean = ig.lstrip("@")
-            contact_icons += f'''<a href="https://instagram.com/{html_lib.escape(ig_clean, quote=True)}" target="_blank" class="contact-badge" style="color: #E1306C;" title="Instagram: {html_lib.escape(ig, quote=True)}">
+            contact_icons += f"""<a href="https://instagram.com/{html_lib.escape(ig_clean, quote=True)}" target="_blank" class="contact-badge" style="color: #E1306C;" title="Instagram: {html_lib.escape(ig, quote=True)}">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M7.8 2h8.4C19.4 2 22 4.6 22 7.8v8.4a5.8 5.8 0 0 1-5.8 5.8H7.8C4.6 22 2 19.4 2 16.2V7.8A5.8 5.8 0 0 1 7.8 2m-.2 2A3.6 3.6 0 0 0 4 7.6v8.8A3.6 3.6 0 0 0 7.6 20h8.8a3.6 3.6 0 0 0 3.6-3.6V7.6A3.6 3.6 0 0 0 16.4 4H7.6m9.65 1.5a1.25 1.25 0 0 1 1.25 1.25A1.25 1.25 0 0 1 17.25 8 1.25 1.25 0 0 1 16 6.75a1.25 1.25 0 0 1 1.25-1.25M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3z"/></svg>
-            </a>'''
+            </a>"""
         if fb:
             fb_url = fb if "://" in fb else f"https://{fb}"
             contact_icons += f'<a href="{html_lib.escape(fb_url, quote=True)}" target="_blank" class="contact-badge" style="color: #1877F2;" title="Facebook: {html_lib.escape(fb, quote=True)}"><span class="material-icons">facebook</span></a>'
@@ -129,20 +135,22 @@ def export_html(leads: list[dict], output_path: str):
             first_url = booking.split(" | ")[0]
             booking_badge = f'<a href="{html_lib.escape(first_url, quote=True)}" target="_blank" class="booking-badge" style="color: #8b5cf6;" title="{html_lib.escape(booking, quote=True)}"><span class="material-icons">event_available</span></a>'
 
-        rows.append({
-            "num": i,
-            "name": str(lead.get("business_name", "") or ""),
-            "industry": str(lead.get("industry", "") or ""),
-            "city": str(lead.get("city", "") or ""),
-            "contacts_html": contact_icons,
-            "booking_badge": booking_badge,
-            "rating": str(rating or ""),
-            "reviews": str(reviews or ""),
-            "tier": tier,
-            "tier_color": color,
-            "tier_bg": bg,
-            "score": score,
-        })
+        rows.append(
+            {
+                "num": i,
+                "name": str(lead.get("business_name", "") or ""),
+                "industry": str(lead.get("industry", "") or ""),
+                "city": str(lead.get("city", "") or ""),
+                "contacts_html": contact_icons,
+                "booking_badge": booking_badge,
+                "rating": str(rating or ""),
+                "reviews": str(reviews or ""),
+                "tier": tier,
+                "tier_color": color,
+                "tier_bg": bg,
+                "score": score,
+            }
+        )
 
     tiers = []
     for t in ["HOT", "WARM", "COOL", "COLD"]:
@@ -184,18 +192,20 @@ def export_html(leads: list[dict], output_path: str):
         if lead.get("requires_ig_web_prototype"):
             audit_badges += '<span class="tier" style="background:rgba(225,48,108,0.1); color:#E1306C; border:1px solid #E1306C; margin-right:4px;">IG-to-Web Ready</span>'
 
-        top_opportunities.append({
-            "name": raw_name,
-            "industry": str(lead.get("industry", "Unknown")),
-            "city": str(lead.get("city", "")),
-            "score": score,
-            "notes": notes,
-            "audit_badges": audit_badges,
-            "tier": lead.get("lead_tier", "COLD"),
-            "tier_color": tier_colors.get(lead.get("lead_tier", "COLD"), "#6b7280"),
-            "tier_bg": tier_bg.get(lead.get("lead_tier", "COLD"), "rgba(0,0,0,0.05)"),
-            "suggested_msg": msg,
-        })
+        top_opportunities.append(
+            {
+                "name": raw_name,
+                "industry": str(lead.get("industry", "Unknown")),
+                "city": str(lead.get("city", "")),
+                "score": score,
+                "notes": notes,
+                "audit_badges": audit_badges,
+                "tier": lead.get("lead_tier", "COLD"),
+                "tier_color": tier_colors.get(lead.get("lead_tier", "COLD"), "#6b7280"),
+                "tier_bg": tier_bg.get(lead.get("lead_tier", "COLD"), "rgba(0,0,0,0.05)"),
+                "suggested_msg": msg,
+            }
+        )
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
 
@@ -243,13 +253,27 @@ def export_audit_html(results: list[dict], output_path: str, total_leads: int, a
         "✅": "#dcfce7",
         "⚠️": "#fef3c7",
         "❌": "#fee2e2",
-        "🔒": "#fef3c7", "🔗": "#fef3c7", "📄": "#fef3c7",
-        "📝": "#fef3c7", "🖼️": "#fef3c7", "📑": "#fef3c7",
-        "📱": "#fef3c7", "💬": "#fef3c7", "📅": "#e0f2fe",
-        "🎯": "#fef3c7", "⭐": "#fef3c7", "📰": "#fef3c7",
-        "💰": "#fef3c7", "🏗️": "#fef3c7", "⚡": "#dcfce7",
-        "🐌": "#fee2e2", "🗜️": "#fef3c7", "📸": "#fef3c7",
-        "📍": "#fef3c7", "🏷️": "#fef3c7", "📊": "#fef3c7",
+        "🔒": "#fef3c7",
+        "🔗": "#fef3c7",
+        "📄": "#fef3c7",
+        "📝": "#fef3c7",
+        "🖼️": "#fef3c7",
+        "📑": "#fef3c7",
+        "📱": "#fef3c7",
+        "💬": "#fef3c7",
+        "📅": "#e0f2fe",
+        "🎯": "#fef3c7",
+        "⭐": "#fef3c7",
+        "📰": "#fef3c7",
+        "💰": "#fef3c7",
+        "🏗️": "#fef3c7",
+        "⚡": "#dcfce7",
+        "🐌": "#fee2e2",
+        "🗜️": "#fef3c7",
+        "📸": "#fef3c7",
+        "📍": "#fef3c7",
+        "🏷️": "#fef3c7",
+        "📊": "#fef3c7",
         "⏱️": "#fef3c7",
     }
 
@@ -263,7 +287,11 @@ def export_audit_html(results: list[dict], output_path: str, total_leads: int, a
         url = str(r.get("url_clean", "") or "")
         tech = ", ".join(str(t) for t in r.get("tech_stack", []))
         booking = r.get("booking", {})
-        booking_str = ", ".join(booking.get("systems", [])) if booking and booking.get("has_booking") else "No detectado"
+        booking_str = (
+            ", ".join(booking.get("systems", []))
+            if booking and booking.get("has_booking")
+            else "No detectado"
+        )
         images = r.get("images", {})
         seo = r.get("seo", {})
         contact = r.get("contact", {})
@@ -317,7 +345,8 @@ def export_audit_html(results: list[dict], output_path: str, total_leads: int, a
         tech_score = min(tech_score, TECH_MAX_SCORE)
 
         tech_score_color = (
-            "#22c55e" if tech_score >= TECH_GREEN_THRESHOLD
+            "#22c55e"
+            if tech_score >= TECH_GREEN_THRESHOLD
             else ("#f59e0b" if tech_score >= TECH_YELLOW_THRESHOLD else "#ef4444")
         )
 
@@ -348,30 +377,32 @@ def export_audit_html(results: list[dict], output_path: str, total_leads: int, a
         city = str(r.get("city", "") or "")
         phone = str(r.get("phone", "") or "")
 
-        cards.append({
-            "name": name,
-            "url": url,
-            "industry": industry,
-            "city": city,
-            "phone": phone,
-            "score": tech_score,
-            "score_color": tech_score_color,
-            "status_emoji": status_emoji,
-            "status_color": status_color,
-            "code": code,
-            "rt": rt,
-            "ssl": ssl,
-            "booking_str": booking_str,
-            "imgs_html": imgs_html,
-            "mobile_str": mobile_str,
-            "tech": tech,
-            "contact_icons": contact_icons,
-            "seo_title": seo_title,
-            "improvements": improvements[:MAX_IMPROVEMENTS],
-            "lead_tier": lead_tier,
-            "lead_color": lead_color,
-            "lead_score": lead_score,
-        })
+        cards.append(
+            {
+                "name": name,
+                "url": url,
+                "industry": industry,
+                "city": city,
+                "phone": phone,
+                "score": tech_score,
+                "score_color": tech_score_color,
+                "status_emoji": status_emoji,
+                "status_color": status_color,
+                "code": code,
+                "rt": rt,
+                "ssl": ssl,
+                "booking_str": booking_str,
+                "imgs_html": imgs_html,
+                "mobile_str": mobile_str,
+                "tech": tech,
+                "contact_icons": contact_icons,
+                "seo_title": seo_title,
+                "improvements": improvements[:MAX_IMPROVEMENTS],
+                "lead_tier": lead_tier,
+                "lead_color": lead_color,
+                "lead_score": lead_score,
+            }
+        )
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
 

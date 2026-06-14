@@ -1,6 +1,7 @@
 """
 Configuration loading and default industry/location data.
 """
+
 import copy
 import logging
 import os
@@ -58,7 +59,7 @@ def _load_yaml(path: str) -> dict:
         logger.error("Config file not found: %s", path)
         sys.exit(1)
     with open(path, encoding="utf-8") as f:
-        return yaml.safe_load(f)
+        return yaml.safe_load(f)  # type: ignore[no-any-return]
 
 
 def _merge_with_defaults(cfg: dict) -> dict:
@@ -75,7 +76,17 @@ def load_config(path: str) -> dict[str, Any]:
 _FALLBACK_INDUSTRIES: dict[str, dict[str, Any]] = {
     "1": {
         "name": "Barbería y Peluquería",
-        "keywords": ["barbería", "barber", "barbershop", "peluquería", "salón de belleza", "corte de cabello", "barber shop", "barba", "barberia"],
+        "keywords": [
+            "barbería",
+            "barber",
+            "barbershop",
+            "peluquería",
+            "salón de belleza",
+            "corte de cabello",
+            "barber shop",
+            "barba",
+            "barberia",
+        ],
         "bonus_score": 5,
     },
     "2": {
@@ -85,12 +96,31 @@ _FALLBACK_INDUSTRIES: dict[str, dict[str, Any]] = {
     },
     "3": {
         "name": "Servicios Profesionales",
-        "keywords": ["contador", "consultor", "abogado", "asesor", "estudio contable", "consultoría"],
+        "keywords": [
+            "contador",
+            "consultor",
+            "abogado",
+            "asesor",
+            "estudio contable",
+            "consultoría",
+        ],
         "bonus_score": 5,
     },
     "4": {
         "name": "Salud y Belleza",
-        "keywords": ["spa", "masajes", "centro de estética", "clínica estética", "depilación", "tratamientos faciales", "estética", "belleza", "wellness", "centro de belleza", "salón de uñas"],
+        "keywords": [
+            "spa",
+            "masajes",
+            "centro de estética",
+            "clínica estética",
+            "depilación",
+            "tratamientos faciales",
+            "estética",
+            "belleza",
+            "wellness",
+            "centro de belleza",
+            "salón de uñas",
+        ],
         "bonus_score": 3,
     },
     "5": {
@@ -115,12 +145,25 @@ _FALLBACK_INDUSTRIES: dict[str, dict[str, Any]] = {
     },
     "9": {
         "name": "Automotriz",
-        "keywords": ["taller mecánico", "repuestos", "vulcanización", "car wash", "servicio técnico automotriz", "mecánica"],
+        "keywords": [
+            "taller mecánico",
+            "repuestos",
+            "vulcanización",
+            "car wash",
+            "servicio técnico automotriz",
+            "mecánica",
+        ],
         "bonus_score": 4,
     },
     "10": {
         "name": "Mascotas",
-        "keywords": ["veterinaria", "peluquería canina", "pet shop", "clínica veterinaria", "alimento mascotas"],
+        "keywords": [
+            "veterinaria",
+            "peluquería canina",
+            "pet shop",
+            "clínica veterinaria",
+            "alimento mascotas",
+        ],
         "bonus_score": 4,
     },
     "11": {
@@ -130,7 +173,15 @@ _FALLBACK_INDUSTRIES: dict[str, dict[str, Any]] = {
     },
     "12": {
         "name": "Inmobiliaria y Construcción",
-        "keywords": ["propiedades", "corredora", "construcción", "arquitecto", "remodelación", "gasfitería", "electricista"],
+        "keywords": [
+            "propiedades",
+            "corredora",
+            "construcción",
+            "arquitecto",
+            "remodelación",
+            "gasfitería",
+            "electricista",
+        ],
         "bonus_score": 5,
     },
 }
@@ -189,7 +240,7 @@ def get_default_locations() -> list[dict[str, Any]]:
         raw = _load_yaml("config.yaml")
         locations = raw.get("search", {}).get("locations", [])
         if locations:
-            return locations
+            return locations  # type: ignore[no-any-return]
     except (Exception, SystemExit):
         pass
     return _FALLBACK_LOCATIONS

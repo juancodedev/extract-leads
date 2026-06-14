@@ -1,6 +1,7 @@
 """
 Google Places API client for automated business search.
 """
+
 import asyncio
 import logging
 from datetime import datetime
@@ -38,25 +39,28 @@ class PlacesExtractor:
         self.max_retries = ext_cfg.get("max_retries", MAX_RETRIES)
         self.retry_backoff = ext_cfg.get("retry_backoff", RETRY_BACKOFF)
 
-    async def _fetch_with_retry(self, url: str, params: dict,
-                                 allow_redirects: bool = True) -> dict:
+    async def _fetch_with_retry(self, url: str, params: dict, allow_redirects: bool = True) -> dict:
         """GET with exponential backoff on transient errors."""
-        last_error = None
+        last_error: Exception | None = None
         for attempt in range(self.max_retries):
             async with self._sem:
                 try:
                     async with self.session.get(
-                        url, params=params,
+                        url,
+                        params=params,
                         timeout=aiohttp.ClientTimeout(total=self.request_timeout),
                         allow_redirects=allow_redirects,
                     ) as resp:
-                        return await resp.json()
+                        return await resp.json()  # type: ignore[no-any-return]
                 except (aiohttp.ClientError, asyncio.TimeoutError) as e:
                     last_error = e
                     if attempt < self.max_retries - 1:
-                        delay = self.retry_backoff ** attempt
-                        logger.debug("Retry %d/%d in %.1fs: %s", attempt + 1, self.max_retries, delay, e)
+                        delay = self.retry_backoff**attempt
+                        logger.debug(
+                            "Retry %d/%d in %.1fs: %s", attempt + 1, self.max_retries, delay, e
+                        )
                         await asyncio.sleep(delay)
+        assert last_error is not None
         raise last_error
 
     @property
@@ -86,9 +90,7 @@ class PlacesExtractor:
         pages = 0
         while pages < self.max_pages:
             try:
-                data = await self._fetch_with_retry(
-                    f"{self.BASE_URL}/textsearch/json", params
-                )
+                data = await self._fetch_with_retry(f"{self.BASE_URL}/textsearch/json", params)
             except (aiohttp.ClientError, asyncio.TimeoutError) as e:
                 logger.error("Search failed: %s", e)
                 break
@@ -118,26 +120,32 @@ class PlacesExtractor:
                 details_list = await asyncio.gather(*detail_tasks, return_exceptions=True)
 
                 for idx, place_id in enumerate(batch_ids):
-                    place = next((p for p in data.get("results", []) if p.get("place_id") == place_id), {})
+                    place = next(
+                        (p for p in data.get("results", []) if p.get("place_id") == place_id), {}
+                    )
                     if not place:
                         continue
 
-                    details = details_list[idx] if not isinstance(details_list[idx], Exception) else {}
+                    details = (
+                        details_list[idx] if not isinstance(details_list[idx], Exception) else {}
+                    )
 
-                    results.append({
-                        "place_id": place_id,
-                        "business_name": place.get("name", ""),
-                        "address": place.get("formatted_address", ""),
-                        "rating": place.get("rating"),
-                        "total_ratings": place.get("user_ratings_total", 0),
-                        "types": place.get("types", []),
-                        "website": details.get("website", ""),
-                        "phone": details.get("formatted_phone_number", ""),
-                        "international_phone": details.get("international_phone_number", ""),
-                        "google_maps_url": details.get("url", ""),
-                        "source": "Google Maps",
-                        "date_found": datetime.now().strftime("%Y-%m-%d"),
-                    })
+                    results.append(
+                        {
+                            "place_id": place_id,
+                            "business_name": place.get("name", ""),  # type: ignore[call-overload]
+                            "address": place.get("formatted_address", ""),  # type: ignore[call-overload]
+                            "rating": place.get("rating"),  # type: ignore[call-overload]
+                            "total_ratings": place.get("user_ratings_total", 0),  # type: ignore[call-overload]
+                            "types": place.get("types", []),  # type: ignore[call-overload]
+                            "website": details.get("website", ""),  # type: ignore[union-attr]
+                            "phone": details.get("formatted_phone_number", ""),  # type: ignore[union-attr]
+                            "international_phone": details.get("international_phone_number", ""),  # type: ignore[union-attr]
+                            "google_maps_url": details.get("url", ""),  # type: ignore[union-attr]
+                            "source": "Google Maps",
+                            "date_found": datetime.now().strftime("%Y-%m-%d"),
+                        }
+                    )
 
             next_token = data.get("next_page_token")
             if not next_token:
@@ -158,10 +166,8 @@ class PlacesExtractor:
             "language": "es",
         }
         try:
-            data = await self._fetch_with_retry(
-                f"{self.BASE_URL}/details/json", params
-            )
-            return data.get("result", {})
+            data = await self._fetch_with_retry(f"{self.BASE_URL}/details/json", params)
+            return data.get("result", {})  # type: ignore[no-any-return]
         except (aiohttp.ClientError, asyncio.TimeoutError) as e:
             logger.error("Place details failed for %s: %s", place_id, e)
             return {}

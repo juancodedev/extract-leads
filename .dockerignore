@@ -1,0 +1,17 @@
+.venv/
+.git/
+.github/
+__pycache__/
+*.pyc
+.pytest_cache/
+leads_output/
+.env
+.env.local
+tests/
+docs/
+agents/
+openspec/
+files/
+.atl/
+*.md
+!README.md
