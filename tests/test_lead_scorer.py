@@ -34,6 +34,22 @@ class TestWebGoal:
         # Base 50 + no_site 40 + premium_loc 10 + industry 5 = 105 → capped at 100
         assert result["lead_score"] == 100
 
+    def test_needs_website_flag_set_when_no_website(self, base_config):
+        scorer = LeadScorer(base_config, goal="web")
+        lead = make_lead(website="", google_type="")
+        result = scorer.score(lead)
+
+        assert result["needs_website"] is True
+        assert result["needs_seo"] is False
+        assert result["has_web_no_social"] is False
+
+    def test_needs_website_flag_false_when_has_website(self, base_config):
+        scorer = LeadScorer(base_config, goal="web")
+        lead = make_lead(website="https://example.com", google_type="")
+        result = scorer.score(lead)
+
+        assert result["needs_website"] is False
+
 
 class TestSeoGoal:
     """When goal='seo', poor tech SEO or no social on an existing site scores high."""
@@ -77,6 +93,25 @@ class TestSeoGoal:
         result = scorer.score(lead)
 
         assert "Poor technical SEO" in result["scoring_notes"]
+
+    def test_needs_seo_flag_set_with_poor_tech_seo(self, base_config):
+        scorer = LeadScorer(base_config, goal="seo")
+        lead = make_lead(
+            website="https://example.com",
+            audit_data={
+                "seo": {"has_meta_description": False, "has_h1": False},
+            },
+        )
+        result = scorer.score(lead)
+
+        assert result["needs_seo"] is True
+
+    def test_has_web_no_social_flag_set(self, base_config):
+        scorer = LeadScorer(base_config, goal="seo")
+        lead = make_lead(website="https://example.com")
+        result = scorer.score(lead)
+
+        assert result["has_web_no_social"] is True
 
 
 class TestAdsGoal:

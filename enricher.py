@@ -4,7 +4,6 @@ Email and social media enrichment for leads.
 import asyncio
 import logging
 import re
-from typing import Dict, Optional
 
 import aiohttp
 
@@ -24,7 +23,7 @@ class Enricher:
     Social detection: parses website HTML for known social URLs.
     """
 
-    def __init__(self, hunter_api_key: Optional[str] = None, session: Optional[aiohttp.ClientSession] = None, config: Optional[Dict] = None):
+    def __init__(self, hunter_api_key: str | None = None, session: aiohttp.ClientSession | None = None, config: dict | None = None):
         self.hunter_api_key = hunter_api_key
         self.session = session
         self._hunter_sem = asyncio.Semaphore(3)
@@ -37,7 +36,8 @@ class Enricher:
 
     async def _fetch_with_retry(self, url: str, sem: asyncio.Semaphore, *,
                                  params: dict = None, headers: dict = None,
-                                 timeout: int = 10, as_text: bool = False) -> str:
+                                 timeout: int = 10, as_text: bool = False,
+                                 allow_redirects: bool = True) -> str:
         """GET with exponential backoff on transient errors.
 
         Accepts an explicit semaphore so the caller chooses the right
@@ -50,6 +50,7 @@ class Enricher:
                     async with self.session.get(
                         url, params=params, headers=headers,
                         timeout=aiohttp.ClientTimeout(total=timeout),
+                        allow_redirects=allow_redirects,
                     ) as resp:
                         return await resp.text() if as_text else await resp.json()
                 except (aiohttp.ClientError, asyncio.TimeoutError) as e:
@@ -63,7 +64,7 @@ class Enricher:
                         await asyncio.sleep(delay)
         raise last_error
 
-    async def find_email(self, domain: str) -> Optional[str]:
+    async def find_email(self, domain: str) -> str | None:
         """Find email address for a domain using Hunter.io."""
         if not self.hunter_api_key or not domain or not self.session:
             return None
@@ -85,7 +86,7 @@ class Enricher:
 
         return None
 
-    async def scan_website(self, website: str, business_name: str = "") -> Dict[str, Optional[str]]:
+    async def scan_website(self, website: str, business_name: str = "") -> dict[str, str | None]:
         """Scan website HTML for social media, WhatsApp, and booking links.
 
         Returns dict with: facebook, instagram, linkedin, whatsapp, booking_links.
@@ -177,7 +178,7 @@ class Enricher:
 
         # ── Booking/Reservation Systems ──
         seen_bookings = set()
-        for domain in BOOKING_DOMAINS.keys():
+        for domain in BOOKING_DOMAINS:
             for m in re.finditer(
                 r'https?://[^"\'<> ]*' + re.escape(domain) + r'[^"\'<> ]*',
                 html,
@@ -212,7 +213,7 @@ class Enricher:
         return result
 
     @staticmethod
-    def extract_domain(website: str) -> Optional[str]:
+    def extract_domain(website: str) -> str | None:
         """Extract clean domain from a URL."""
         if not website:
             return None

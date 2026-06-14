@@ -4,12 +4,11 @@ CSV export and import functions for lead data.
 import csv
 import logging
 import os
-from typing import Dict, List
 
 logger = logging.getLogger(__name__)
 
 
-def export_csv(leads: List[Dict], output_path: str):
+def export_csv(leads: list[dict], output_path: str):
     """Write leads to CSV file."""
     fieldnames = [
         "business_name",
@@ -48,9 +47,9 @@ def export_csv(leads: List[Dict], output_path: str):
     logger.info("Exported %d leads to %s", len(leads), output_path)
 
 
-def load_leads_from_csv(path: str) -> List[Dict]:
+def load_leads_from_csv(path: str) -> list[dict]:
     """Load leads from a previously exported CSV."""
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         sample = f.read(4096)
         f.seek(0)
         try:

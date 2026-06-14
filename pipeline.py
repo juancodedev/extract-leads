@@ -10,16 +10,15 @@ import logging
 import math
 import re
 from datetime import datetime
-from typing import Dict, List
 
 import aiohttp
 from rapidfuzz import fuzz
 from tqdm import tqdm
 
-from extractor import PlacesExtractor
-from enricher import Enricher
-from lead_scorer import LeadScorer
 from analyzer import WebsiteAnalyzer
+from enricher import Enricher
+from extractor import PlacesExtractor
+from lead_scorer import LeadScorer
 
 logging.basicConfig(
     level=logging.INFO,
@@ -30,7 +29,7 @@ logger = logging.getLogger(__name__)
 DUP_THRESHOLD = 85
 
 
-def deduplicate_leads(leads: List[Dict], threshold: int = DUP_THRESHOLD) -> List[Dict]:
+def deduplicate_leads(leads: list[dict], threshold: int = DUP_THRESHOLD) -> list[dict]:
     """Fuzzy-deduplicate leads by business name, keeping highest-scored lead."""
     seen = []
     unique = []
@@ -48,7 +47,7 @@ def deduplicate_leads(leads: List[Dict], threshold: int = DUP_THRESHOLD) -> List
 
 
 async def run_pipeline(
-    config: Dict,
+    config: dict,
     api_key: str,
     hunter_key: str = "",
     limit: int = 0,
@@ -56,7 +55,7 @@ async def run_pipeline(
     do_seo: bool = False,
     do_ads: bool = False,
     do_ig_web: bool = False,
-) -> List[Dict]:
+) -> list[dict]:
     """Execute the full extraction pipeline with optional deep audits.
 
     Creates a single aiohttp.ClientSession and injects it into all
@@ -69,7 +68,7 @@ async def run_pipeline(
         scorer = LeadScorer(config, goal=goal)
         analyzer = WebsiteAnalyzer(session, config=config) if do_seo else None
 
-        all_leads: List[Dict] = []
+        all_leads: list[dict] = []
         seen_names: set = set()
 
         search_config = config.get("search", {})
@@ -142,7 +141,7 @@ async def run_pipeline(
                         enrich_tasks = [_enrich_lead(lead, enricher, hunter_key) for lead in lead_batch]
                         enriched = await asyncio.gather(*enrich_tasks, return_exceptions=True)
 
-                        for lead, result in zip(lead_batch, enriched):
+                        for lead, result in zip(lead_batch, enriched, strict=True):
                             if isinstance(result, Exception):
                                 logger.debug("Enrichment failed for %s: %s", lead["business_name"], result)
                             else:
@@ -181,7 +180,7 @@ async def run_pipeline(
 
                 if audit_tasks:
                     audit_results = await asyncio.gather(*audit_tasks, return_exceptions=True)
-                    for lead, result in zip([l for l in top_for_audit if l.get("website")], audit_results):
+                    for lead, result in zip([lead for lead in top_for_audit if lead.get("website")], audit_results, strict=True):
                         if isinstance(result, Exception):
                             logger.debug("Audit failed for %s: %s", lead["business_name"], result)
                         else:
@@ -199,7 +198,7 @@ async def run_pipeline(
     return all_leads
 
 
-async def _enrich_lead(lead: Dict, enricher: 'Enricher', hunter_key: str) -> Dict:
+async def _enrich_lead(lead: dict, enricher: 'Enricher', hunter_key: str) -> dict:
     """Enrich a single lead with email + website scan."""
     updates = {}
     if lead["website"] and hunter_key:
@@ -232,7 +231,7 @@ async def _enrich_lead(lead: Dict, enricher: 'Enricher', hunter_key: str) -> Dic
     return updates
 
 
-async def _audit_lead(lead: Dict, analyzer: 'WebsiteAnalyzer', scorer: 'LeadScorer') -> Dict:
+async def _audit_lead(lead: dict, analyzer: 'WebsiteAnalyzer', scorer: 'LeadScorer') -> dict:
     """Run SEO audit on a single lead."""
     try:
         audit_data = await analyzer.analyze(lead["website"])
@@ -244,9 +243,9 @@ async def _audit_lead(lead: Dict, analyzer: 'WebsiteAnalyzer', scorer: 'LeadScor
 
 
 # ── Backward-compatible re-exports ──────────────────────────────────
-from config_loader import load_config          # noqa: E402, F401
+from config_loader import load_config  # noqa: E402, F401
 from exporters import export_csv, load_leads_from_csv  # noqa: E402, F401
-from reporters import print_summary, export_html       # noqa: E402, F401
+from reporters import export_html, print_summary  # noqa: E402, F401
 
 
 def __getattr__(name):

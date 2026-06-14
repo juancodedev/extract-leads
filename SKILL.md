@@ -94,8 +94,17 @@ python pipeline.py --interactive
 - `pipeline.py`: Main orchestration.
 - `analyzer.py`: Technical website analysis.
 - `extractor.py`: Google Places integration.
-- `enricher.py`: Data enrichment (Social/Email).
-- `agents/`: Specialized skill templates (SEO, Ads, Business, IG).
+- `enricher.py`: Data enrichment (Social/Email/Booking).
+- `lead_scorer.py`: Lead scoring engine.
+- `cli.py`: Interactive CLI interface.
+- `config_loader.py`: YAML configuration loading.
+- `exporters.py`: CSV/HTML export logic.
+- `booking_data.py`: Booking platform detection data.
+- `reporters.py`: Report generation utilities.
+- `agents/`: Specialized skill templates (SEO, Ads, Business, IG, Prospecting).
+- `tests/`: Test suite (pytest).
+- `docs/`: Reference docs (outreach templates, search tactics, industry filters).
+- `openspec/`: SDD change tracking.
 
 
 ```bash
@@ -200,18 +209,26 @@ The skill is pre-configured for Chile but works anywhere. To change markets:
 | `REQUEST_DENIED` | API key may not have Places API enabled |
 | Site shows 0ms/0 status | Site may be down; verify manually |
 
-## 📦 Package Structure (for distribution)
+## 📦 Package Structure
 
 ```
 lead-extractor/
 ├── SKILL.md              ← This file (agent instructions)
 ├── pipeline.py           ← Main CLI
+├── analyzer.py           ← Website audit
 ├── extractor.py          ← Google Places search
 ├── enricher.py           ← Social/WhatsApp/Booking detection
 ├── lead_scorer.py        ← Scoring engine
-├── analyzer.py           ← Website audit
+├── cli.py                ← Interactive CLI
+├── config_loader.py      ← YAML config loading
+├── exporters.py          ← CSV/HTML export
+├── booking_data.py       ← Booking platform constants
+├── reporters.py          ← Report generation
 ├── config.yaml           ← User configuration
-├── requirements.txt      ← Python deps
+├── requirements.txt      ← Python deps (tqdm, aiohttp, rapidfuzz, …)
 ├── README.md             ← GitHub readme
-└── files/                ← Original reference docs
+├── tests/                ← Test suite (pytest)
+├── agents/               ← Specialized skill templates (SEO, Ads, Business, IG)
+├── docs/                 ← Reference documentation
+└── openspec/             ← SDD change tracking
 ```

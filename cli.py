@@ -15,11 +15,11 @@ from dotenv import load_dotenv
 load_dotenv(".env.local")
 load_dotenv(".env")
 
-from config_loader import load_config, get_default_industries, get_default_locations
-from pipeline import run_pipeline
-from exporters import export_csv, load_leads_from_csv
-from reporters import print_summary, export_html
-from analyzer import generate_audit_report
+from analyzer import generate_audit_report  # noqa: E402
+from config_loader import get_default_industries, get_default_locations, load_config  # noqa: E402
+from exporters import export_csv, load_leads_from_csv  # noqa: E402
+from pipeline import run_pipeline  # noqa: E402
+from reporters import export_html, print_summary  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ def _print_dry_run(config, args):
     total_keywords = len(all_keywords)
 
     # Count unique regions
-    regions = set(loc.get("region", "") for loc in locations)
+    regions = {loc.get("region", "") for loc in locations}
 
     # Search combinations = sum over all industries of kws × locations
     total_combos = sum(
@@ -196,7 +196,7 @@ async def main():
     # Show config summary
     search_cfg = config.get("search", {})
     industries = [i["name"] for i in search_cfg.get("industries", [])]
-    locations = [l["city"] for l in search_cfg.get("locations", [])]
+    locations = [loc["city"] for loc in search_cfg.get("locations", [])]
     target = search_cfg.get("target_size", "micro")
 
     print()
@@ -245,21 +245,21 @@ def run_interactive():
         hunter_key = os.environ.get("HUNTER_API_KEY", "")
 
     # Load defaults (never reads config.yaml — avoids circular dep on first run)
-    AVAILABLE_INDUSTRIES = get_default_industries()
-    ALL_CITIES = get_default_locations()
+    available_industries = get_default_industries()
+    all_cities = get_default_locations()
 
     # Industries
     print("\n📋 Industrias disponibles:")
-    for key, ind in sorted(AVAILABLE_INDUSTRIES.items(), key=lambda x: int(x[0])):
+    for key, ind in sorted(available_industries.items(), key=lambda x: int(x[0])):
         print(f"  [{key}] {ind['name']}")
-    print(f"  [{len(AVAILABLE_INDUSTRIES)+1}] Otra industria (especificar)")
+    print(f"  [{len(available_industries)+1}] Otra industria (especificar)")
 
     selected = input("\n¿Qué industrias? (ej: 1,2,3 o 'todas'): ").strip()
 
     chosen_industries = []
     if selected.lower() in ("todas", "all", "*"):
-        chosen_industries = list(AVAILABLE_INDUSTRIES.values())
-    elif selected == str(len(AVAILABLE_INDUSTRIES) + 1):
+        chosen_industries = list(available_industries.values())
+    elif selected == str(len(available_industries) + 1):
         custom_name = input("  Nombre de la industria: ").strip()
         custom_kws = input("  Palabras clave (separadas por coma): ").strip().split(",")
         chosen_industries.append({
@@ -270,8 +270,8 @@ def run_interactive():
     else:
         for s in selected.split(","):
             s = s.strip()
-            if s in AVAILABLE_INDUSTRIES:
-                chosen_industries.append(AVAILABLE_INDUSTRIES[s])
+            if s in available_industries:
+                chosen_industries.append(available_industries[s])
 
     if not chosen_industries:
         logger.error("No seleccionaste ninguna industria válida")
@@ -279,14 +279,14 @@ def run_interactive():
 
     # Cities
     print("\n📍 Regiones disponibles:")
-    regions = sorted(set(c["region"] for c in ALL_CITIES))
+    regions = sorted({c["region"] for c in all_cities})
     for i, r in enumerate(regions, 1):
         print(f"  [{i}] {r}")
     print(f"  [{len(regions)+1}] Todas las regiones")
     region_choice = input("\n¿Qué región(es)? (ej: 1,2 o 'todas'): ").strip()
 
     if region_choice.lower() in ("todas", "all", "*") or region_choice == str(len(regions) + 1):
-        chosen_cities = ALL_CITIES
+        chosen_cities = all_cities
     else:
         chosen_regions = []
         for s in region_choice.split(","):
@@ -297,10 +297,10 @@ def run_interactive():
                     chosen_regions.append(regions[idx])
             except ValueError:
                 pass
-        chosen_cities = [c for c in ALL_CITIES if c["region"] in chosen_regions]
+        chosen_cities = [c for c in all_cities if c["region"] in chosen_regions]
 
     if not chosen_cities:
-        chosen_cities = ALL_CITIES
+        chosen_cities = all_cities
 
     # Goal
     print("\n🎯 ¿Cuál es tu objetivo? (Esto ajusta la puntuación):")

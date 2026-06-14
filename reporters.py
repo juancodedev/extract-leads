@@ -6,7 +6,6 @@ import logging
 import os
 import re
 from datetime import datetime
-from typing import Dict, List
 
 from jinja2 import Environment, FileSystemLoader
 
@@ -24,14 +23,14 @@ jinja_env = Environment(loader=FileSystemLoader(TEMPLATE_DIR), autoescape=True)
 logger = logging.getLogger(__name__)
 
 
-def print_summary(leads: List[Dict]):
+def print_summary(leads: list[dict]):
     """Print a summary of results to stdout."""
     if not leads:
         print("\n No leads found.")
         return
 
-    tiers: Dict[str, int] = {}
-    industries: Dict[str, int] = {}
+    tiers: dict[str, int] = {}
+    industries: dict[str, int] = {}
 
     for lead in leads:
         t = lead.get("lead_tier", "UNKNOWN")
@@ -61,7 +60,7 @@ def print_summary(leads: List[Dict]):
     print()
 
 
-def export_html(leads: List[Dict], output_path: str):
+def export_html(leads: list[dict], output_path: str):
     """Generate a clean HTML report from leads data."""
     # Sort leads by score descending
     leads = sorted(leads, key=lambda x: x.get("lead_score", 0), reverse=True)
@@ -69,18 +68,18 @@ def export_html(leads: List[Dict], output_path: str):
     tiers_count = {}
     industries_count = {}
     total = len(leads)
-    phones = sum(1 for l in leads if l.get("phone"))
-    websites = sum(1 for l in leads if l.get("website"))
-    with_wa = sum(1 for l in leads if l.get("whatsapp_link"))
-    with_booking = sum(1 for l in leads if l.get("booking_links"))
+    phones = sum(1 for lead in leads if lead.get("phone"))
+    websites = sum(1 for lead in leads if lead.get("website"))
+    with_wa = sum(1 for lead in leads if lead.get("whatsapp_link"))
+    with_booking = sum(1 for lead in leads if lead.get("booking_links"))
     avg_rating = 0.0
     ratings_n = 0
-    for l in leads:
-        t = l.get("lead_tier", "UNKNOWN")
+    for lead in leads:
+        t = lead.get("lead_tier", "UNKNOWN")
         tiers_count[t] = tiers_count.get(t, 0) + 1
-        ind = l.get("industry", "Unknown")
+        ind = lead.get("industry", "Unknown")
         industries_count[ind] = industries_count.get(ind, 0) + 1
-        r = l.get("google_rating")
+        r = lead.get("google_rating")
         if r:
             try:
                 avg_rating += float(r)
@@ -93,19 +92,19 @@ def export_html(leads: List[Dict], output_path: str):
     tier_bg = {"HOT": "rgba(239,68,68,0.1)", "WARM": "rgba(245,158,11,0.1)", "COOL": "rgba(59,130,246,0.1)", "COLD": "rgba(107,114,128,0.1)"}
 
     rows = []
-    for i, l in enumerate(leads, 1):
-        tier = l.get("lead_tier", "COLD")
+    for i, lead in enumerate(leads, 1):
+        tier = lead.get("lead_tier", "COLD")
         color = tier_colors.get(tier, "#6b7280")
         bg = tier_bg.get(tier, "transparent")
-        score = l.get("lead_score", 0)
-        rating = l.get("google_rating", "")
-        reviews = l.get("review_count", "")
-        phone = str(l.get("phone", "") or "")
-        website = str(l.get("website", "") or "")
-        ig = str(l.get("instagram_handle", "") or "")
-        fb = str(l.get("facebook_url", "") or "")
-        wa = str(l.get("whatsapp_link", "") or "")
-        booking = str(l.get("booking_links", "") or "")
+        score = lead.get("lead_score", 0)
+        rating = lead.get("google_rating", "")
+        reviews = lead.get("review_count", "")
+        phone = str(lead.get("phone", "") or "")
+        website = str(lead.get("website", "") or "")
+        ig = str(lead.get("instagram_handle", "") or "")
+        fb = str(lead.get("facebook_url", "") or "")
+        wa = str(lead.get("whatsapp_link", "") or "")
+        booking = str(lead.get("booking_links", "") or "")
 
         contact_icons = ""
         if phone:
@@ -132,9 +131,9 @@ def export_html(leads: List[Dict], output_path: str):
 
         rows.append({
             "num": i,
-            "name": str(l.get("business_name", "") or ""),
-            "industry": str(l.get("industry", "") or ""),
-            "city": str(l.get("city", "") or ""),
+            "name": str(lead.get("business_name", "") or ""),
+            "industry": str(lead.get("industry", "") or ""),
+            "city": str(lead.get("city", "") or ""),
             "contacts_html": contact_icons,
             "booking_badge": booking_badge,
             "rating": str(rating or ""),
@@ -165,12 +164,14 @@ def export_html(leads: List[Dict], output_path: str):
         score = lead.get("lead_score", 0)
         notes = lead.get("scoring_notes", "No notes")
 
-        # Simple outreach logic
+        # Simple outreach logic — uses explicit flags, not fragile string matching
         msg = f"Hola {raw_name}, he visto tu negocio en Google Maps. "
-        if "No Website" in notes:
+        if lead.get("needs_website"):
             msg += "He notado que no tienes sitio web, lo que te hace perder visibilidad frente a la competencia..."
-        elif "Poor technical SEO" in notes:
+        elif lead.get("needs_seo"):
             msg += "He analizado tu web y tiene algunos fallos técnicos que impiden que aparezcas en los primeros resultados..."
+        elif lead.get("has_web_no_social"):
+            msg += "He notado que tienes web pero poca presencia en redes sociales — hay una oportunidad grande de atraer más clientes..."
         else:
             msg += "Me gusta mucho cómo gestionas tu presencia digital, pero creo que podríamos potenciar aún más tus resultados..."
 
@@ -223,7 +224,7 @@ def export_html(leads: List[Dict], output_path: str):
     logger.info("Reporte HTML generado: %s", output_path)
 
 
-def export_audit_html(results: List[Dict], output_path: str, total_leads: int, audited: int):
+def export_audit_html(results: list[dict], output_path: str, total_leads: int, audited: int):
     """Generate the website audit HTML report from analysis results."""
     results = sorted(
         results,
@@ -275,25 +276,44 @@ def export_audit_html(results: List[Dict], output_path: str, total_leads: int, a
 
         # Technical Score
         tech_score = TECH_BASE_SCORE
-        if status == "ok": tech_score += 15
-        if ssl: tech_score += 5
-        if rt < 1500: tech_score += 5
-        if seo.get("has_title"): tech_score += 4
-        if seo.get("has_meta_description"): tech_score += 4
-        if seo.get("has_og_title"): tech_score += 3
-        if seo.get("has_canonical"): tech_score += 2
-        if seo.get("has_h1"): tech_score += 3
-        if seo.get("has_favicon"): tech_score += 2
-        if seo.get("has_schema_org"): tech_score += 3
-        if images.get("total", 0) > 0: tech_score += 3
-        if images.get("without_alt", 0) == 0 and images.get("total", 0) > 0: tech_score += 3
-        if images.get("has_lazy_loading"): tech_score += 2
-        if mobile.get("has_viewport"): tech_score += 4
-        if contact.get("has_whatsapp"): tech_score += 4
-        if contact.get("has_contact_form"): tech_score += 3
-        if content.get("has_cta"): tech_score += 3
-        if content.get("has_testimonials"): tech_score += 2
-        if booking.get("has_booking"): tech_score += 3
+        if status == "ok":
+            tech_score += 15
+        if ssl:
+            tech_score += 5
+        if rt < 1500:
+            tech_score += 5
+        if seo.get("has_title"):
+            tech_score += 4
+        if seo.get("has_meta_description"):
+            tech_score += 4
+        if seo.get("has_og_title"):
+            tech_score += 3
+        if seo.get("has_canonical"):
+            tech_score += 2
+        if seo.get("has_h1"):
+            tech_score += 3
+        if seo.get("has_favicon"):
+            tech_score += 2
+        if seo.get("has_schema_org"):
+            tech_score += 3
+        if images.get("total", 0) > 0:
+            tech_score += 3
+        if images.get("without_alt", 0) == 0 and images.get("total", 0) > 0:
+            tech_score += 3
+        if images.get("has_lazy_loading"):
+            tech_score += 2
+        if mobile.get("has_viewport"):
+            tech_score += 4
+        if contact.get("has_whatsapp"):
+            tech_score += 4
+        if contact.get("has_contact_form"):
+            tech_score += 3
+        if content.get("has_cta"):
+            tech_score += 3
+        if content.get("has_testimonials"):
+            tech_score += 2
+        if booking.get("has_booking"):
+            tech_score += 3
         tech_score = min(tech_score, TECH_MAX_SCORE)
 
         tech_score_color = (
@@ -311,11 +331,16 @@ def export_audit_html(results: List[Dict], output_path: str, total_leads: int, a
             imgs_html += f", {images['without_alt']} sin alt"
 
         contact_icons = ""
-        if contact.get("has_whatsapp"): contact_icons += "💬 "
-        if contact.get("has_phone_link"): contact_icons += "📞 "
-        if contact.get("has_contact_form"): contact_icons += "📝 "
-        if contact.get("has_email_link"): contact_icons += "📧 "
-        if contact.get("has_google_maps_embed"): contact_icons += "📍 "
+        if contact.get("has_whatsapp"):
+            contact_icons += "💬 "
+        if contact.get("has_phone_link"):
+            contact_icons += "📞 "
+        if contact.get("has_contact_form"):
+            contact_icons += "📝 "
+        if contact.get("has_email_link"):
+            contact_icons += "📧 "
+        if contact.get("has_google_maps_embed"):
+            contact_icons += "📍 "
 
         mobile_str = "Responsive" if mobile.get("has_viewport") else "No responsive"
         seo_title = str(seo.get("title", "Sin title") or "Sin title")[:40]

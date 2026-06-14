@@ -8,13 +8,12 @@ All default values live in DEFAULT_CONFIG (config_loader.py).
 Config keys are guaranteed present by _merge_with_defaults().
 """
 import re as _re
-from typing import Dict, List, Optional
 
 
 class LeadScorer:
     """Score and tier leads based on opportunity for specific services."""
 
-    def __init__(self, config: Dict, goal: str = "general"):
+    def __init__(self, config: dict, goal: str = "general"):
         """
         Args:
             config: Configuration dictionary.
@@ -41,7 +40,7 @@ class LeadScorer:
 
     def _build_industry_bonuses(self):
         """Map industry keywords to bonus scores for fast lookup."""
-        self.industry_bonuses: List[tuple] = []
+        self.industry_bonuses: list[tuple] = []
         for industry in self.config.get("search", {}).get("industries", []):
             name = industry.get("name", "")
             bonus = industry.get("bonus_score", 0)
@@ -55,7 +54,7 @@ class LeadScorer:
             if loc.get("premium"):
                 self.premium_locations.add(loc["city"].lower())
 
-    def score(self, lead: Dict) -> Dict:
+    def score(self, lead: dict) -> dict:
         """Apply scoring rubric to a single lead.
 
         The lead dict is returned with additional keys:
@@ -65,6 +64,7 @@ class LeadScorer:
         """
         score = self.base_score
         notes = []
+        flags = {}
 
         # Industry bonus
         industry_text = (
@@ -83,11 +83,12 @@ class LeadScorer:
                 bonus = self._gb_web.get("no_site_bonus", 40)
                 score += bonus
                 notes.append(f"No Website: Max opportunity for web design (+{bonus})")
+                flags["needs_website"] = True
             else:
                 penalty = self._gb_web.get("has_site_penalty", -10)
                 score += penalty
                 notes.append(f"Has Website: Lower opportunity for web design ({penalty})")
-        
+
         elif self.goal == "seo":
             if lead.get("website"):
                 # Basic check: if it has website but no active social
@@ -95,7 +96,8 @@ class LeadScorer:
                     bonus = self._gb_seo.get("no_social_bonus", 20)
                     score += bonus
                     notes.append(f"Has web but no social: SEO/Marketing opportunity (+{bonus})")
-                
+                    flags["has_web_no_social"] = True
+
                 # Check for other signals from analyzer if available
                 audit = lead.get("audit_data", {})
                 if audit:
@@ -104,6 +106,7 @@ class LeadScorer:
                         bonus = self._gb_seo.get("poor_tech_bonus", 30)
                         score += bonus
                         notes.append(f"Poor technical SEO detected (+{bonus})")
+                        flags["needs_seo"] = True
             else:
                 penalty = self._gb_seo.get("no_site_penalty", -20)
                 score += penalty
@@ -114,7 +117,7 @@ class LeadScorer:
                 bonus = self._gb_ads.get("has_site_bonus", 20)
                 score += bonus
                 notes.append(f"Has web: Ready for Ads traffic (+{bonus})")
-            
+
             rating = lead.get("google_rating")
             threshold = self._gb_ads.get("low_rating_threshold", 4.2)
             if rating and isinstance(rating, (int, float)) and rating < threshold:
@@ -180,6 +183,9 @@ class LeadScorer:
             "lead_score": final_score,
             "lead_tier": tier,
             "scoring_notes": " | ".join(notes) if notes else "Base score only",
+            "needs_website": flags.get("needs_website", False),
+            "needs_seo": flags.get("needs_seo", False),
+            "has_web_no_social": flags.get("has_web_no_social", False),
         }
 
     def _get_tier(self, score: int) -> str:
@@ -191,9 +197,9 @@ class LeadScorer:
 
     @staticmethod
     def classify_industry(
-        business_types: List[str],
+        business_types: list[str],
         business_name: str,
-        config: Dict,
+        config: dict,
     ) -> str:
         """Classify a business into a target industry from config.
 
@@ -215,7 +221,7 @@ class LeadScorer:
         return "Unknown"
 
     @staticmethod
-    def extract_city(address: str, config: Dict) -> str:
+    def extract_city(address: str, config: dict) -> str:
         """Extract city name from a full address string."""
         if not address:
             return ""

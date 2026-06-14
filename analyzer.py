@@ -2,18 +2,16 @@
 Website analyzer for leads - checks availability, SEO, booking systems,
 images, performance, and generates actionable improvement suggestions.
 """
+import asyncio
 import logging
 import re
 import time
-from typing import Dict, List, Optional
 from urllib.parse import urlparse
 
-import asyncio
-
 import aiohttp
+from tqdm import tqdm
 
 from booking_data import BOOKING_DOMAINS, BOOKING_SKIP
-from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +51,7 @@ TECH_YELLOW_THRESHOLD = 50
 class WebsiteAnalyzer:
     """Analyze a business website for quality signals and improvements."""
 
-    def __init__(self, session: aiohttp.ClientSession, timeout: int = 15, config: Optional[Dict] = None):
+    def __init__(self, session: aiohttp.ClientSession, timeout: int = 15, config: dict | None = None):
         self.session = session
         self.timeout = timeout
         self._sem = asyncio.Semaphore(10)
@@ -61,7 +59,7 @@ class WebsiteAnalyzer:
         self.slow_threshold = sc_cfg.get("slow_ms", SLOW_THRESHOLD_MS)
         self.warn_threshold = sc_cfg.get("warn_ms", WARN_THRESHOLD_MS)
 
-    async def analyze(self, url: str) -> Dict:
+    async def analyze(self, url: str) -> dict:
         """Run full analysis on a website URL."""
         result = {
             "url": url,
@@ -86,25 +84,24 @@ class WebsiteAnalyzer:
 
         start = time.time()
         try:
-            async with self._sem:
-                async with self.session.get(
-                    clean_url,
-                    timeout=aiohttp.ClientTimeout(total=self.timeout),
-                    allow_redirects=True,
-                ) as resp:
-                    html = await resp.text()
-                    elapsed = int((time.time() - start) * 1000)
+            async with self._sem, self.session.get(
+                clean_url,
+                timeout=aiohttp.ClientTimeout(total=self.timeout),
+                allow_redirects=True,
+            ) as resp:
+                html = await resp.text()
+                elapsed = int((time.time() - start) * 1000)
 
-                    result["status"] = "ok" if resp.status == 200 else "warning"
-                    result["status_code"] = resp.status
-                    result["response_time_ms"] = elapsed
-                    result["ssl"] = clean_url.startswith("https")
-                    result["redirects"] = len(resp.history)
-                    result["final_url"] = str(resp.url)
+                result["status"] = "ok" if resp.status == 200 else "warning"
+                result["status_code"] = resp.status
+                result["response_time_ms"] = elapsed
+                result["ssl"] = clean_url.startswith("https")
+                result["redirects"] = len(resp.history)
+                result["final_url"] = str(resp.url)
 
-                    result.update(self._analyze_html(html, clean_url))
-                    result.update(self._analyze_headers(resp.headers))
-                    result["improvements"] = self._generate_improvements(result)
+                result.update(self._analyze_html(html, clean_url))
+                result.update(self._analyze_headers(resp.headers))
+                result["improvements"] = self._generate_improvements(result)
 
         except (aiohttp.ClientError, asyncio.TimeoutError) as e:
             elapsed = int((time.time() - start) * 1000)
@@ -127,7 +124,7 @@ class WebsiteAnalyzer:
             return ""
         return url
 
-    def _analyze_html(self, html: str, url: str) -> Dict:
+    def _analyze_html(self, html: str, url: str) -> dict:
         analysis = {
             "page_size_kb": len(html) // 1024,
             "seo": self._analyze_seo(html),
@@ -140,7 +137,7 @@ class WebsiteAnalyzer:
         }
         return analysis
 
-    def _analyze_seo(self, html: str) -> Dict:
+    def _analyze_seo(self, html: str) -> dict:
         seo = {
             "has_title": False,
             "title": "",
@@ -223,7 +220,7 @@ class WebsiteAnalyzer:
 
         return seo
 
-    def _analyze_images(self, html: str) -> Dict:
+    def _analyze_images(self, html: str) -> dict:
         images = re.findall(r"<img[^>]+>", html, re.IGNORECASE)
         total = len(images)
         without_alt = 0
@@ -241,7 +238,7 @@ class WebsiteAnalyzer:
             "has_lazy_loading": has_lazy,
         }
 
-    def _analyze_booking(self, html: str, url: str) -> Dict:
+    def _analyze_booking(self, html: str, url: str) -> dict:
         result = {
             "has_booking": False,
             "systems": [],
@@ -265,7 +262,7 @@ class WebsiteAnalyzer:
 
         return result
 
-    def _analyze_contact(self, html: str) -> Dict:
+    def _analyze_contact(self, html: str) -> dict:
         return {
             "has_whatsapp": bool(re.search(
                 r'(wa\.me|api\.whatsapp|whatsapp\.com/send)', html, re.IGNORECASE,
@@ -288,7 +285,7 @@ class WebsiteAnalyzer:
             )),
         }
 
-    def _analyze_content(self, html: str) -> Dict:
+    def _analyze_content(self, html: str) -> dict:
         text = re.sub(r"<[^>]+>", " ", html)
         text = re.sub(r"\s+", " ", text).strip()
         word_count = len(text.split())
@@ -317,7 +314,7 @@ class WebsiteAnalyzer:
             )),
         }
 
-    def _analyze_mobile(self, html: str) -> Dict:
+    def _analyze_mobile(self, html: str) -> dict:
         return {
             "has_viewport": bool(re.search(
                 r'name=["\']viewport["\']', html, re.IGNORECASE,
@@ -327,7 +324,7 @@ class WebsiteAnalyzer:
             ),
         }
 
-    def _analyze_headers(self, headers: Dict) -> Dict:
+    def _analyze_headers(self, headers: dict) -> dict:
         perf = {
             "has_gzip": False,
             "server": "",
@@ -337,7 +334,7 @@ class WebsiteAnalyzer:
         perf["server"] = headers.get("Server", "")
         return {"performance": perf}
 
-    def _detect_cms(self, html: str) -> List[str]:
+    def _detect_cms(self, html: str) -> list[str]:
         detected = []
         for cms_name, patterns in CMS_PATTERNS.items():
             for pattern in patterns:
@@ -346,7 +343,7 @@ class WebsiteAnalyzer:
                     break
         return detected if detected else ["Custom / Unknown"]
 
-    def _generate_improvements(self, analysis: Dict) -> List[str]:
+    def _generate_improvements(self, analysis: dict) -> list[str]:
         improvements = []
         seo = analysis.get("seo", {})
         images = analysis.get("images", {})
@@ -492,7 +489,7 @@ class WebsiteAnalyzer:
         return improvements
 
 
-async def generate_audit_report(leads: List[Dict], output_path: str):
+async def generate_audit_report(leads: list[dict], output_path: str):
     """Run website analysis on all leads with websites and generate HTML report."""
     from reporters import export_audit_html
 
@@ -500,7 +497,7 @@ async def generate_audit_report(leads: List[Dict], output_path: str):
     async with aiohttp.ClientSession(connector=connector) as session:
         analyzer = WebsiteAnalyzer(session)
         total = len(leads)
-        with_website = [l for l in leads if l.get("website")]
+        with_website = [lead for lead in leads if lead.get("website")]
         with_website = sorted(with_website, key=lambda x: x.get("lead_score", 0), reverse=True)
 
         logger.info("Auditing %d/%d websites...", len(with_website), total)

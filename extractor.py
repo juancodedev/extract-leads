@@ -4,7 +4,6 @@ Google Places API client for automated business search.
 import asyncio
 import logging
 from datetime import datetime
-from typing import Dict, List, Optional
 
 import aiohttp
 
@@ -27,7 +26,7 @@ class PlacesExtractor:
     BASE_URL = "https://maps.googleapis.com/maps/api/place"
     FIELDS = "website,formatted_phone_number,international_phone_number,opening_hours,url,rating,user_ratings_total"
 
-    def __init__(self, api_key: str, session: aiohttp.ClientSession, config: Optional[Dict] = None):
+    def __init__(self, api_key: str, session: aiohttp.ClientSession, config: dict | None = None):
         self.api_key = api_key
         self.session = session
         self._request_count = 0
@@ -39,7 +38,8 @@ class PlacesExtractor:
         self.max_retries = ext_cfg.get("max_retries", MAX_RETRIES)
         self.retry_backoff = ext_cfg.get("retry_backoff", RETRY_BACKOFF)
 
-    async def _fetch_with_retry(self, url: str, params: dict) -> dict:
+    async def _fetch_with_retry(self, url: str, params: dict,
+                                 allow_redirects: bool = True) -> dict:
         """GET with exponential backoff on transient errors."""
         last_error = None
         for attempt in range(self.max_retries):
@@ -48,6 +48,7 @@ class PlacesExtractor:
                     async with self.session.get(
                         url, params=params,
                         timeout=aiohttp.ClientTimeout(total=self.request_timeout),
+                        allow_redirects=allow_redirects,
                     ) as resp:
                         return await resp.json()
                 except (aiohttp.ClientError, asyncio.TimeoutError) as e:
@@ -62,7 +63,7 @@ class PlacesExtractor:
     def request_count(self) -> int:
         return self._request_count
 
-    async def search_businesses(self, keyword: str, location: str) -> List[Dict]:
+    async def search_businesses(self, keyword: str, location: str) -> list[dict]:
         """Search for businesses matching keyword near location.
 
         Args:
@@ -148,7 +149,7 @@ class PlacesExtractor:
 
         return results
 
-    async def _get_place_details(self, place_id: str) -> Dict:
+    async def _get_place_details(self, place_id: str) -> dict:
         """Fetch detailed information for a specific place."""
         params = {
             "place_id": place_id,

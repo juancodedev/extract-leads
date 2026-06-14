@@ -82,6 +82,9 @@ def make_lead(**overrides) -> dict:
         "google_type": "barber_shop",
         "contact_person": "",
         "audit_data": {},
+        "needs_website": False,
+        "needs_seo": False,
+        "has_web_no_social": False,
     }
     lead.update(overrides)
     return lead

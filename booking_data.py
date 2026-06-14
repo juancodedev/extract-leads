@@ -4,9 +4,8 @@ Shared booking domain definitions for lead enrichment and analysis.
 Single source of truth for online booking/reservation system detection.
 Both enricher.py and analyzer.py import from here.
 """
-from typing import Dict, Set
 
-BOOKING_DOMAINS: Dict[str, str] = {
+BOOKING_DOMAINS: dict[str, str] = {
     # From analyzer.py (20 entries) — human-readable names as keys
     "agendapro.com": "AgendaPro",
     "setmore.com": "Setmore",
@@ -35,7 +34,7 @@ BOOKING_DOMAINS: Dict[str, str] = {
 # Excluded: "bookingsystem" — generic term causing substring false positives.
 
 
-BOOKING_SKIP: Set[str] = {
+BOOKING_SKIP: set[str] = {
     "terminos", "terms", "condiciones", "conditions",
     "privacy", "privacidad", "legal", "aviso-legal",
     "cookies", "blog", "faq", "ayuda", "help",
