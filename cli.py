@@ -24,6 +24,58 @@ from analyzer import generate_audit_report
 logger = logging.getLogger(__name__)
 
 
+def _print_dry_run(config, args):
+    """Print a summary of what WOULD be searched without making API calls."""
+    search_cfg = config.get("search", {})
+    industries = search_cfg.get("industries", [])
+    locations = search_cfg.get("locations", [])
+
+    # Collect all keywords (with duplicates if shared across industries)
+    all_keywords = []
+    for ind in industries:
+        all_keywords.extend(ind.get("keywords", []))
+    total_keywords = len(all_keywords)
+
+    # Count unique regions
+    regions = set(loc.get("region", "") for loc in locations)
+
+    # Search combinations = sum over all industries of kws × locations
+    total_combos = sum(
+        len(ind.get("keywords", [])) * len(locations) for ind in industries
+    )
+
+    # Industry names
+    industry_names = [ind.get("name", "Unknown") for ind in industries]
+
+    # Active deep audit flags
+    audits = []
+    if args.seo:
+        audits.append("SEO")
+    if args.ads:
+        audits.append("Meta Ads")
+    if args.ig_web:
+        audits.append("Instagram→Web")
+
+    print()
+    print("=== DRY RUN ===")
+    print(f"Goal: {args.goal}")
+    print(f"Industries: {len(industries)} ({', '.join(industry_names)})")
+    print(f"Keywords: {', '.join(all_keywords)}")
+    print(f"Locations: {len(locations)} cities in {len(regions)} regions")
+    print(
+        f"Search combinations: {total_keywords} keywords × "
+        f"{len(locations)} cities = {total_combos}"
+    )
+    print(f"API calls estimated: ~{total_combos} search + details")
+    limit_label = str(args.limit) if args.limit else "unlimited"
+    print(f"Limit: {limit_label} leads")
+    if audits:
+        print(f"Deep audits: {', '.join(audits)}")
+    print(f"Output: {args.output}")
+    print("=== End dry run ===")
+    print()
+
+
 async def main():
     parser = argparse.ArgumentParser(
         description="Lead Extractor - Automated lead finding via Google Places API"
@@ -90,6 +142,11 @@ async def main():
         action="store_true",
         help="Mark top prospects for Instagram-to-Web prototype",
     )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be searched without making API calls",
+    )
     args = parser.parse_args()
 
     # Audit mode
@@ -115,6 +172,11 @@ async def main():
 
     # Load configuration
     config = load_config(args.config)
+
+    # Dry-run: preview what would happen without making any API calls
+    if args.dry_run:
+        _print_dry_run(config, args)
+        return
 
     # API keys
     api_key = args.google_key or os.environ.get("GOOGLE_PLACES_API_KEY", "")
@@ -351,3 +413,8 @@ def run_interactive():
         asyncio.run(generate_audit_report(leads, audit_output))
 
     print("\n✅ Listo!")
+
+
+def main_wrapper():
+    """Entry point for console_scripts."""
+    asyncio.run(main())

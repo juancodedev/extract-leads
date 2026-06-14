@@ -1,0 +1,64 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lead-extractor"
+version = "0.2.0"
+description = "Automated lead finding via Google Places API with enrichment, scoring, and HTML reports"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+dependencies = [
+    "aiohttp>=3.9.0",
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0.0",
+    "rapidfuzz>=3.0.0",
+    "Jinja2>=3.1.0",
+    "tqdm>=4.66",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.8",
+    "mypy>=1.0",
+]
+
+[project.scripts]
+lead-extractor = "cli:main_wrapper"
+
+[tool.setuptools]
+py-modules = [
+    "analyzer",
+    "booking_data",
+    "cli",
+    "config_loader",
+    "enricher",
+    "exporters",
+    "extractor",
+    "lead_scorer",
+    "pipeline",
+    "reporters",
+]
+
+[tool.setuptools.packages.find]
+include = ["*.py"]
+exclude = ["tests*", "agents*", "docs*", "files*", "openspec*"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["extractor", "enricher", "lead_scorer", "analyzer", "reporters", "exporters", "config_loader", "pipeline", "cli", "booking_data"]
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+warn_return_any = true
+warn_unused_ignores = true

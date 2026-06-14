@@ -7,6 +7,7 @@ CLI, config loading, and output functions live in sibling modules.
 """
 import asyncio
 import logging
+import math
 import re
 from datetime import datetime
 from typing import Dict, List
@@ -77,7 +78,7 @@ async def run_pipeline(
 
         per_industry_limit = 0
         if limit:
-            per_industry_limit = limit // len(industries) if industries else limit
+            per_industry_limit = math.ceil(limit / len(industries)) if industries else limit
 
         total_combos = len(industries) * len(locations)
         pbar = tqdm(total=total_combos, desc="Extracting", unit="combo") if total_combos else None
