@@ -13,6 +13,7 @@ from typing import Dict, List
 
 import aiohttp
 from rapidfuzz import fuzz
+from tqdm import tqdm
 
 from extractor import PlacesExtractor
 from enricher import Enricher
@@ -79,7 +80,7 @@ async def run_pipeline(
             per_industry_limit = limit // len(industries) if industries else limit
 
         total_combos = len(industries) * len(locations)
-        done = 0
+        pbar = tqdm(total=total_combos, desc="Extracting", unit="combo") if total_combos else None
 
         for industry in industries:
             industry_leads = 0
@@ -89,12 +90,9 @@ async def run_pipeline(
                         break
                     if limit and len(all_leads) >= limit:
                         break
-                    done += 1
 
-                    logger.info(
-                        "[%d/%d] Searching '%s' in %s, %s",
-                        done, total_combos, keyword, loc["city"], loc["region"],
-                    )
+                    if pbar:
+                        pbar.set_postfix_str(f"{keyword} @ {loc['city']}")
 
                     try:
                         results = await extractor.search_businesses(
@@ -153,6 +151,9 @@ async def run_pipeline(
                             all_leads.append(lead)
                             industry_leads += 1
 
+                    if pbar:
+                        pbar.update(1)
+
                     if limit and len(all_leads) >= limit:
                         break
                 if limit and len(all_leads) >= limit:
@@ -162,6 +163,9 @@ async def run_pipeline(
                     "Reached %d leads for '%s', moving to next",
                     industry_leads, industry.get("name"),
                 )
+
+        if pbar:
+            pbar.close()
 
         # --- DEEP AUDITS ---
         if all_leads and (do_seo or do_ads or do_ig_web):

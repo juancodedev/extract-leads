@@ -16,10 +16,14 @@ DEFAULT_CONFIG = {
         "max_pages": 3,
         "page_token_delay": 2,
         "request_timeout": 15,
+        "max_retries": 3,
+        "retry_backoff": 1.5,
     },
     "enrichment": {
         "hunter_timeout": 10,
         "website_scan_timeout": 10,
+        "max_retries": 3,
+        "retry_backoff": 1.5,
     },
     "scoring": {
         "dup_threshold": 85,

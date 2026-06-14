@@ -143,6 +143,12 @@ class LeadScorer:
             score += extra
             notes.append(f"{channel_count} channels (+{extra})")
 
+        # WhatsApp contact (high conversion value, especially in Chile)
+        if lead.get("whatsapp_link"):
+            extra = self.weights.get("whatsapp", 10)
+            score += extra
+            notes.append(f"WhatsApp (+{extra})")
+
         # Premium location
         city = (lead.get("city") or "").lower()
         if city in self.premium_locations:

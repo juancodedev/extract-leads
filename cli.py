@@ -280,10 +280,14 @@ def run_interactive():
             "max_pages": 3,
             "page_token_delay": 2,
             "request_timeout": 15,
+            "max_retries": 3,
+            "retry_backoff": 1.5,
         },
         "enrichment": {
             "hunter_timeout": 10,
             "website_scan_timeout": 10,
+            "max_retries": 3,
+            "retry_backoff": 1.5,
         },
         "scoring": {
             "base_score": 50,
@@ -297,8 +301,6 @@ def run_interactive():
                 "multiple_channels": 10,
                 "owner_info": 5,
                 "premium_location": 10,
-                "employees_5plus": 8,
-                "years_2plus": 7,
             },
             "thresholds": {
                 "slow_ms": 3000,

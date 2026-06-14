@@ -13,6 +13,7 @@ import asyncio
 import aiohttp
 
 from booking_data import BOOKING_DOMAINS, BOOKING_SKIP
+from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
 
@@ -505,9 +506,11 @@ async def generate_audit_report(leads: List[Dict], output_path: str):
         logger.info("Auditing %d/%d websites...", len(with_website), total)
 
         results = []
-        for i, lead in enumerate(with_website, 1):
+        pbar = tqdm(with_website, desc="Auditing websites", unit="site")
+        for lead in pbar:
             url = lead["website"]
             name = lead.get("business_name", "")
+            pbar.set_postfix_str(name[:30])
             analysis = await analyzer.analyze(url)
             analysis["business_name"] = name
             analysis["industry"] = lead.get("industry", "")
@@ -515,14 +518,8 @@ async def generate_audit_report(leads: List[Dict], output_path: str):
             analysis["phone"] = lead.get("phone", "")
             analysis["lead_score"] = lead.get("lead_score", 0)
             analysis["lead_tier"] = lead.get("lead_tier", "COLD")
-
-            status_icon = "OK" if analysis.get("status") == "ok" else "ERR"
-            logger.info(
-                "[%d/%d] %s — %s %sms | %s",
-                i, len(with_website), name[:40], status_icon,
-                analysis.get("response_time_ms", 0),
-                analysis.get("status_code", 0),
-            )
             results.append(analysis)
+
+        pbar.close()
 
         export_audit_html(results, output_path, total, len(with_website))

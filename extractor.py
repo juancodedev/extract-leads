@@ -13,6 +13,8 @@ logger = logging.getLogger(__name__)
 MAX_PAGES = 3
 PAGE_TOKEN_DELAY = 2  # seconds
 REQUEST_TIMEOUT = 15  # seconds
+MAX_RETRIES = 3
+RETRY_BACKOFF = 1.5  # seconds multiplier
 
 
 class PlacesExtractor:
@@ -34,6 +36,27 @@ class PlacesExtractor:
         self.max_pages = ext_cfg.get("max_pages", MAX_PAGES)
         self.page_token_delay = ext_cfg.get("page_token_delay", PAGE_TOKEN_DELAY)
         self.request_timeout = ext_cfg.get("request_timeout", REQUEST_TIMEOUT)
+        self.max_retries = ext_cfg.get("max_retries", MAX_RETRIES)
+        self.retry_backoff = ext_cfg.get("retry_backoff", RETRY_BACKOFF)
+
+    async def _fetch_with_retry(self, url: str, params: dict) -> dict:
+        """GET with exponential backoff on transient errors."""
+        last_error = None
+        for attempt in range(self.max_retries):
+            async with self._sem:
+                try:
+                    async with self.session.get(
+                        url, params=params,
+                        timeout=aiohttp.ClientTimeout(total=self.request_timeout),
+                    ) as resp:
+                        return await resp.json()
+                except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+                    last_error = e
+                    if attempt < self.max_retries - 1:
+                        delay = self.retry_backoff ** attempt
+                        logger.debug("Retry %d/%d in %.1fs: %s", attempt + 1, self.max_retries, delay, e)
+                        await asyncio.sleep(delay)
+        raise last_error
 
     @property
     def request_count(self) -> int:
@@ -61,17 +84,13 @@ class PlacesExtractor:
 
         pages = 0
         while pages < self.max_pages:
-            async with self._sem:
-                try:
-                    async with self.session.get(
-                        f"{self.BASE_URL}/textsearch/json",
-                        params=params,
-                        timeout=aiohttp.ClientTimeout(total=self.request_timeout),
-                    ) as resp:
-                        data = await resp.json()
-                except (aiohttp.ClientError, asyncio.TimeoutError) as e:
-                    logger.error("Search failed: %s", e)
-                    break
+            try:
+                data = await self._fetch_with_retry(
+                    f"{self.BASE_URL}/textsearch/json", params
+                )
+            except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+                logger.error("Search failed: %s", e)
+                break
 
             if data.get("status") != "OK":
                 if data.get("status") == "ZERO_RESULTS":
@@ -137,15 +156,11 @@ class PlacesExtractor:
             "fields": self.FIELDS,
             "language": "es",
         }
-        async with self._sem:
-            try:
-                async with self.session.get(
-                    f"{self.BASE_URL}/details/json",
-                    params=params,
-                    timeout=aiohttp.ClientTimeout(total=self.request_timeout),
-                ) as resp:
-                    data = await resp.json()
-                    return data.get("result", {})
-            except (aiohttp.ClientError, asyncio.TimeoutError) as e:
-                logger.error("Place details failed for %s: %s", place_id, e)
-                return {}
+        try:
+            data = await self._fetch_with_retry(
+                f"{self.BASE_URL}/details/json", params
+            )
+            return data.get("result", {})
+        except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+            logger.error("Place details failed for %s: %s", place_id, e)
+            return {}
