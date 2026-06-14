@@ -1,197 +1,226 @@
 # Lead Extractor & Business Auditor
 
-Motor de prospección inteligente y auditoría digital. Busca, califica, audita y genera reportes de ventas personalizados automáticamente.
+Motor de prospección inteligente y auditoría digital. Busca, enriquece, califica y genera reportes de ventas automáticamente desde Google Places API.
 
-## 🚀 Features Avanzadas
+[![CI](https://github.com/juancodedev/extract-leads/actions/workflows/ci.yml/badge.svg)](https://github.com/juancodedev/extract-leads/actions/workflows/ci.yml)
 
-- **Opportunity Scoring (Puntuación por Objetivo)**: Ajusta el ranking de leads según lo que quieras vender (Diseño Web, SEO, Ads o General). 
-  - *Ej: Si vendes webs, el sistema prioriza negocios que NO tienen sitio.*
-- **Auditoría SEO Técnica**: Análisis profundo de meta-tags, estructura de headings (H1-H6), rendimiento y SEO social de los mejores prospectos.
-- **Top 5 Oportunidades**: Dashboard visual que destaca los 5 mejores prospectos con análisis de brechas y **scripts de contacto personalizados**.
-- **Material UI Icons**: Interfaz de reporte modernizada con iconos oficiales de marca (WhatsApp, Instagram, etc.) y Material Design.
-- **Detección de Sistemas de Reserva**: Identifica si el negocio usa AgendaPro, Calendly, Setmore y otros.
-- **Enriquecimiento Multi-canal**: WhatsApp, Instagram, Facebook, LinkedIn y emails vía Hunter.io.
+## Características
 
-## 📋 Auditorías Integradas
+- **Async HTTP** — `aiohttp` con connection pooling, semáforos y retry exponencial (3 intentos, backoff 1.5×).
+- **Opportunity Scoring** — Puntuación por objetivo de venta: web, SEO, ads o general. El sistema ajusta el ranking según lo que quieras vender.
+- **Enriquecimiento multi-canal** — WhatsApp, Instagram, Facebook, LinkedIn desde el HTML del sitio. Email vía Hunter.io.
+- **Deduplicación fuzzy** — `rapidfuzz` con umbral configurable para evitar leads repetidos.
+- **Auditoría SEO técnica** — Title, meta description, OG tags, H1, canonical, schema.org, imágenes, lazy loading, viewport, gzip, CMS detection.
+- **Detección de sistemas de reserva** — 21 plataformas: AgendaPro, Calendly, Setmore, SimplyBook, Acuity y más.
+- **Reportes HTML** — Dashboards con Jinja2 + Material Icons: top oportunidades, tabla interactiva, badges de auditoría, scripts de contacto.
+- **Barra de progreso** — `tqdm` en pipeline de extracción y auditoría.
+- **Modo interactivo** — Menú guiado que construye la configuración sin tocar YAML.
 
-| Auditoría | Qué hace |
-|-----------|----------|
-| **SEO Audit** | Analiza técnicamente la web para detectar fallos de posicionamiento. |
-| **Meta Ads Audit** | (Badge) Identifica si el negocio está listo para campañas de pago. |
-| **Business Audit** | (Badge) Evalúa la coherencia de la presencia digital completa. |
-| **Instagram → Web** | (Badge) Detecta candidatos ideales para convertir su perfil de IG en una web profesional. |
-
-## Archivos
-
-| Archivo | Propósito |
-|---------|-----------|
-| `pipeline.py` | CLI principal: Orquestación, Auditoría y Reportes |
-| `analyzer.py` | Motor de auditoría técnica y análisis de websites |
-| `extractor.py` | Cliente Google Places API |
-| `enricher.py` | Detección de redes, WhatsApp y emails (Hunter.io) |
-| `lead_scorer.py` | Motor de scoring dinámico basado en objetivos |
-| `config.yaml` | Configuración de industrias, ubicaciones y pesos |
-| `agents/` | Plantillas especializadas para auditorías profundas |
-
-## Setup
+## Instalación
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/juancodedev/extract-leads.git
 cd extract-leads
 
-# Crear y activar venv
+# Opción A: pip editable (recomendado)
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
+
+# Opción B: requirements.txt
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+```
 
-# Configurar API keys
-# Puedes crear un archivo .env.local (recomendado) o .env con:
-# GOOGLE_PLACES_API_KEY="tu_key_aquí"
-# HUNTER_API_KEY="tu_key_aquí"
+### API Keys
 
-export GOOGLE_PLACES_API_KEY="tu_key_aqui"
+Crear `.env.local` (no se commitea):
+
+```env
+GOOGLE_PLACES_API_KEY="tu_key"
+HUNTER_API_KEY="tu_key"  # opcional
 ```
 
 ## Uso
 
-### Modo Prospecting Engine (Recomendado)
+### CLI entry point (si instalaste con `pip install -e .`)
 
 ```bash
-python pipeline.py --interactive
+lead-extractor --help
 ```
 
-El nuevo flujo integrado te permite:
-1. Configurar tu búsqueda (Industria + Ciudad).
-2. Elegir tu **Objetivo de Venta** (Web, SEO, Ads).
-3. Activar **Auditorías Profundas** para los mejores resultados.
-
-### CLI Avanzado
+### Modo interactivo
 
 ```bash
-# Buscar leads para vender SEO con auditoría técnica activada
-python pipeline.py --limit 50 --goal seo --seo
+python cli.py --interactive
+```
+
+Te guía paso a paso: industria, ciudad, objetivo de venta, auditorías y límite. Genera `config.yaml`, CSV, HTML y opcionalmente auditoría SEO.
+
+### CLI directo
+
+```bash
+# Buscar 50 leads para vender SEO con auditoría activada
+python cli.py --limit 50 --goal seo --seo
 
 # Buscar oportunidades de diseño web
-python pipeline.py --limit 100 --goal web
+python cli.py --limit 100 --goal web
 
-# Generar reporte desde CSV con el nuevo diseño
-python pipeline.py --from-csv leads.csv --html reporte.html
+# Previsualizar sin gastar API quota
+python cli.py --dry-run
+
+# Generar reporte HTML desde CSV existente
+python cli.py --from-csv leads.csv --html reporte.html
+
+# Auditar websites desde CSV
+python cli.py --from-csv leads.csv --audit auditoria.html
 ```
 
-## Configuración de Objetivos (`--goal`)
+### Opciones completas
 
-- **`web`**: Prioriza negocios sin sitio web (Opportunity Scoring invertido).
-- **`seo`**: Prioriza negocios con web pero con fallos técnicos o sin redes sociales.
-- **`ads`**: Prioriza negocios con web pero bajo rating o poca visibilidad.
-- **`general`**: Puntuación clásica basada en la calidad de la presencia digital.
-
-## Reporte HTML
-
-El reporte ahora es un **Sales Dashboard** que incluye:
-- **Top Oportunidades**: Tarjetas detalladas con la "falla principal" del negocio y cómo abordarlos.
-- **Material Icons**: Visualización profesional de canales de contacto.
-- **Badges de Auditoría**: Identificación visual de leads auditados o listos para servicios específicos.
-
-### CLI completo
-
-```bash
-opciones:
-  --config PATH       Ruta al YAML de configuración (default: config.yaml)
-  --output PATH       Archivo CSV de salida (default: leads_output/leads.csv)
-  --limit N           Máximo de leads a extraer (0 = sin límite)
-  --google-key KEY    API key de Google Places (o env GOOGLE_PLACES_API_KEY)
-  --hunter-key KEY    API key de Hunter.io (o env HUNTER_API_KEY)
-  --interactive       Modo interactivo (hace preguntas)
-  --goal GOAL         Objetivo de venta: web, seo, ads, general (default: general)
-  --seo               Activa auditoría SEO técnica profunda para el Top 10
-  --ads               Marca prospectos para auditoría de Meta Ads
-  --ig-web            Marca prospectos para prototipo Instagram-to-Web
-  --html FILE         Genera reporte HTML desde CSV existente
-  --from-csv FILE     Path al CSV para usar con --html
 ```
+  --config PATH       YAML de configuración (default: config.yaml)
+  --output PATH       CSV de salida (default: leads_output/leads.csv)
+  --limit N           Máximo de leads (0 = sin límite)
+  --google-key KEY    API key de Google Places (o env)
+  --hunter-key KEY    API key de Hunter.io (o env)
+  --interactive       Modo interactivo guiado
+  --goal {web,seo,ads,general}
+                      Objetivo de venta para el scoring (default: general)
+  --seo               Auditoría SEO técnica para los top 10
+  --ads               Marcar prospectos para Meta Ads
+  --ig-web            Marcar prospectos para Instagram → Web
+  --dry-run           Mostrar plan de búsqueda sin llamar APIs
+  --audit FILE        Auditar websites desde CSV → HTML
+  --html FILE         Generar reporte HTML desde CSV existente
+  --from-csv FILE     CSV de entrada para --html o --audit
+```
+
+## Objetivos de scoring (`--goal`)
+
+| Goal | Estrategia |
+|------|-----------|
+| `web` | Prioriza negocios **sin** sitio web (+40). Penaliza si ya tienen (-10). |
+| `seo` | Prioriza negocios con web pero sin redes (+20) o con SEO técnico pobre (+30). Penaliza sin web (-20). |
+| `ads` | Prioriza negocios con web (+20) y rating bajo 4.2 (+15). |
+| `general` | Calidad de presencia digital: web (+15), redes (+20), WhatsApp (+10), rating 4.5+ (+5). |
+
+**Tiers:** HOT (80-100) → WARM (60-79) → COOL (40-59) → COLD (0-39)
 
 ## Configuración (`config.yaml`)
 
-### Industrias
+### Industrias y ubicaciones
 
 ```yaml
 search:
   industries:
-    - name: "Nombre de Industria"
-      keywords: ["palabra1", "palabra2"]
-      bonus_score: 5        # Puntos extra al score
-```
-
-### Ubicaciones
-
-```yaml
+    - name: "Barbería y Peluquería"
+      keywords: ["barbería", "barber", "peluquería"]
+      bonus_score: 5
   locations:
     - city: "Santiago"
       region: "Metropolitana"
-      premium: true         # Da bonus de ubicación en el scoring
+      premium: true       # +10 en scoring
 ```
 
 ### Scoring
 
 ```yaml
 scoring:
-  base_score: 50            # Puntaje base
-  max_score: 100            # Máximo posible
+  base_score: 50
+  max_score: 100
+  dup_threshold: 85       # Umbral fuzzy dedup
   weights:
-    website: 15             # +15 si tiene sitio web
-    active_social: 20       # +20 si tiene Instagram/Facebook
-    multiple_channels: 10   # +10 si tiene 2+ canales de contacto
-    premium_location: 10    # +10 si está en zona premium
-    owner_info: 5           # +5 si hay persona de contacto
+    website: 15
+    active_social: 20
+    whatsapp: 10
+    multiple_channels: 10
+    premium_location: 10
+    owner_info: 5
   tiers:
-    hot: [80, 100]          # Contacto inmediato
-    warm: [60, 79]          # Contacto esta semana
-    cool: [40, 59]          # Email batch
-    cold: [0, 39]           # Archivo
+    hot: [80, 100]
+    warm: [60, 79]
+    cool: [40, 59]
+    cold: [0, 39]
+```
+
+### Extracción y enriquecimiento
+
+```yaml
+extraction:
+  max_pages: 3            # Páginas de resultados de Google Places
+  page_token_delay: 2     # Segundos entre páginas
+  request_timeout: 15     # Timeout HTTP
+  max_retries: 3          # Reintentos con backoff
+  retry_backoff: 1.5      # Factor de backoff exponencial
+
+enrichment:
+  hunter_timeout: 10
+  website_scan_timeout: 10
+  max_retries: 3
+  retry_backoff: 1.5
 ```
 
 ## Output
 
-### CSV
+### CSV (21 campos)
 
-Campos: `business_name`, `industry`, `phone`, `email`, `address`, `city`, `website`, `whatsapp_link`, `facebook_url`, `instagram_handle`, `google_rating`, `review_count`, `lead_score`, `lead_tier`, `scoring_notes`, `source`, `date_found`.
+`business_name`, `industry`, `phone`, `email`, `address`, `city`, `website`, `whatsapp_link`, `facebook_url`, `instagram_handle`, `linkedin_url`, `booking_links`, `google_rating`, `review_count`, `lead_score`, `lead_tier`, `scoring_notes`, `needs_website`, `needs_seo`, `has_web_no_social`, `source`, `date_found`.
 
-### HTML
+### HTML Dashboard
 
-Reporte visual con:
-- **Top Oportunidades**: Tarjetas detalladas con análisis y script de contacto.
-- **Resumen Estadístico**: Total leads, con teléfono, con web, rating promedio, distribución por tier.
-- **Gráfico de Industrias**: Distribución visual de los hallazgos.
-- **Tabla Pro**: Listado completo con Material Icons (MUI) y colores de marca oficiales.
+- Stats grid: total leads, con teléfono, WhatsApp, sitio web, booking, rating promedio.
+- Top 5 Oportunidades con scoring notes y scripts de contacto personalizados.
+- Distribución por industria y tier.
+- Tabla completa con Material Icons clickeables (teléfono, WhatsApp, web, Instagram, Facebook).
+- Badges de auditoría (SEO Auditado, Meta Ads Ready, IG-to-Web Ready).
 
-## Ejemplo de resultados
+### HTML Auditoría
 
-De una extracción de 200 leads balanceados en 4 industrias:
+Scorecards por sitio con: technical score (0-100), response time, SSL, sistema de reservas, imágenes, mobile-friendly, CMS detectado, canales de contacto, SEO title y checklist de mejoras priorizadas por severidad.
 
-| Industria | Leads | Phone | Website | Instagram | Rating |
-|-----------|-------|-------|---------|-----------|--------|
-| Barbería y Peluquería | 54 | 88% | 75% | 42% | 4.8★ |
-| Cafetería y Restaurante | 38 | 85% | 72% | 38% | 4.7★ |
-| Servicios Profesionales | 31 | 82% | 78% | 25% | 4.8★ |
-| Salud y Belleza | 31 | 79% | 70% | 35% | 4.9★ |
-
-## Arquitectura
+## Estructura del proyecto
 
 ```
-                config.yaml
-                     │
-            pipeline.py (Orquestador)
-          /          |           \
-    extractor     enricher      analyzer
-    (Places)     (Social/Email) (Auditoría SEO)
-          \          |           /
-            ──> lead_scorer <──
-                (Goal-based)
-                     │
-              leads_output/
-              ├── leads.csv
-              └── reporte_ventas.html (MUI Design)
+extract-leads/
+├── cli.py                  # CLI entry point + modo interactivo
+├── pipeline.py             # Orquestador async principal
+├── extractor.py            # Google Places API (async + retry)
+├── enricher.py             # Email (Hunter.io) + social/booking scan
+├── lead_scorer.py          # Scoring engine con flags de oportunidad
+├── analyzer.py             # Website analyzer (SEO, imágenes, contacto)
+├── reporters.py            # Reportes HTML (Jinja2) + resúmenes
+├── config_loader.py        # Carga de YAML con defaults y fallbacks
+├── exporters.py            # CSV export/import
+├── booking_data.py         # 21 sistemas de reserva + skip list
+├── config.yaml             # Configuración de usuario
+├── pyproject.toml          # Packaging, entry points, ruff, mypy
+├── requirements.txt        # Dependencias runtime
+├── templates/              # Jinja2: lead_report.html, audit_report.html
+├── tests/                  # 36 tests (pytest)
+├── agents/                 # Kits de auditoría especializada
+├── docs/                   # Guías de outreach, filtros, tácticas
+└── .github/workflows/      # CI: ruff + mypy + pytest
 ```
+
+## Desarrollo
+
+```bash
+# Instalar con dependencias dev
+pip install -e ".[dev]"
+
+# Tests
+pytest tests/ -v
+
+# Lint
+ruff check *.py
+
+# Type check
+mypy --ignore-missing-imports *.py
+```
+
+CI corre automáticamente en push y PR a `master` (ruff lint + mypy type-check + pytest).
 
 ## Licencia
 
