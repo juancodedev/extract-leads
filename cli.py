@@ -119,7 +119,11 @@ async def main():
     )
     parser.add_argument(
         "--audit",
-        help="Run website audit on leads CSV and output HTML report",
+        help="Run website audit on leads CSV and output HTML report "
+             "(usage: --audit leads.csv or --audit output.html --from-csv leads.csv)",
+    )
+    parser.add_argument(
+        "--version", action="version", version="lead-extractor 0.2.0"
     )
     parser.add_argument(
         "--goal",
@@ -151,11 +155,19 @@ async def main():
 
     # Audit mode
     if args.audit:
-        if not args.from_csv:
-            logger.error("--audit requiere --from-csv <archivo.csv>")
+        audit_arg = args.audit
+        if audit_arg.endswith(".csv") and not args.from_csv:
+            # --audit leads.csv → input=leads.csv, output=leads_audit.html
+            leads = load_leads_from_csv(audit_arg)
+            output = audit_arg.replace(".csv", "_audit.html")
+        elif args.from_csv:
+            # --audit output.html --from-csv leads.csv (backward compat)
+            leads = load_leads_from_csv(args.from_csv)
+            output = audit_arg
+        else:
+            logger.error("--audit requiere archivo CSV (ej: --audit leads.csv) o --from-csv")
             sys.exit(1)
-        leads = load_leads_from_csv(args.from_csv)
-        await generate_audit_report(leads, args.audit)
+        await generate_audit_report(leads, output)
         return
 
     # HTML report mode from existing CSV
@@ -395,9 +407,18 @@ def run_interactive():
 
     # Write config.yaml so subsequent --config runs work
     config_path = "config.yaml"
-    with open(config_path, "w", encoding="utf-8") as f:
-        yaml.dump(config, f, allow_unicode=True, default_flow_style=False)
-    logger.info("Configuración guardada en %s", config_path)
+    if os.path.exists(config_path):
+        overwrite = input(f"\n⚠️  {config_path} ya existe. ¿Sobrescribir? (s/n): ").strip().lower()
+        if overwrite != "s":
+            logger.info("Configuración no guardada. Usando solo en memoria.")
+        else:
+            with open(config_path, "w", encoding="utf-8") as f:
+                yaml.dump(config, f, allow_unicode=True, default_flow_style=False)
+            logger.info("Configuración guardada en %s", config_path)
+    else:
+        with open(config_path, "w", encoding="utf-8") as f:
+            yaml.dump(config, f, allow_unicode=True, default_flow_style=False)
+        logger.info("Configuración guardada en %s", config_path)
 
     # Offer HTML
     html_choice = input("\n¿Generar reporte HTML? (s/n, default: s): ").strip().lower()
@@ -418,3 +439,7 @@ def run_interactive():
 def main_wrapper():
     """Entry point for console_scripts."""
     asyncio.run(main())
+
+
+if __name__ == "__main__":
+    main_wrapper()

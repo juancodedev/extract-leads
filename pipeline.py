@@ -240,22 +240,3 @@ async def _audit_lead(lead: dict, analyzer: 'WebsiteAnalyzer', scorer: 'LeadScor
     except Exception as e:
         logger.debug("SEO audit failed for %s: %s", lead["business_name"], e)
         return {}
-
-
-# ── Backward-compatible re-exports ──────────────────────────────────
-from config_loader import load_config  # noqa: E402, F401
-from exporters import export_csv, load_leads_from_csv  # noqa: E402, F401
-from reporters import export_html, print_summary  # noqa: E402, F401
-
-
-def __getattr__(name):
-    """Lazy re-exports for cli.py symbols to break circular import."""
-    if name in ("main", "run_interactive"):
-        import cli as _cli
-        return getattr(_cli, name)
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-
-
-if __name__ == "__main__":
-    from cli import main as _main
-    asyncio.run(_main())
