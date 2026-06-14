@@ -3,18 +3,12 @@ Configurable lead scoring engine.
 
 Takes a lead dict and applies a scoring rubric defined in config.
 Returns the lead with lead_score, lead_tier, and scoring_notes added.
-"""
-from typing import Dict, List, Optional
 
-WEB_NO_SITE_BONUS = 40
-WEB_HAS_SITE_PENALTY = -10
-SEO_NO_SOCIAL_BONUS = 20
-SEO_POOR_TECH_BONUS = 30
-SEO_NO_SITE_PENALTY = -20
-ADS_HAS_SITE_BONUS = 20
-ADS_LOW_RATING_BONUS = 15
-ADS_LOW_RATING_THRESHOLD = 4.2
-GENERAL_HIGH_RATING_THRESHOLD = 4.5
+All default values live in DEFAULT_CONFIG (config_loader.py).
+Config keys are guaranteed present by _merge_with_defaults().
+"""
+import re as _re
+from typing import Dict, List, Optional
 
 
 class LeadScorer:
@@ -86,11 +80,11 @@ class LeadScorer:
         # Goal-based Opportunity Scoring (Inspired by kit-prospeccion)
         if self.goal == "web":
             if not lead.get("website"):
-                bonus = self._gb_web.get("no_site_bonus", WEB_NO_SITE_BONUS)
+                bonus = self._gb_web.get("no_site_bonus", 40)
                 score += bonus
                 notes.append(f"No Website: Max opportunity for web design (+{bonus})")
             else:
-                penalty = self._gb_web.get("has_site_penalty", WEB_HAS_SITE_PENALTY)
+                penalty = self._gb_web.get("has_site_penalty", -10)
                 score += penalty
                 notes.append(f"Has Website: Lower opportunity for web design ({penalty})")
         
@@ -98,7 +92,7 @@ class LeadScorer:
             if lead.get("website"):
                 # Basic check: if it has website but no active social
                 if not lead.get("instagram_handle") and not lead.get("facebook_url"):
-                    bonus = self._gb_seo.get("no_social_bonus", SEO_NO_SOCIAL_BONUS)
+                    bonus = self._gb_seo.get("no_social_bonus", 20)
                     score += bonus
                     notes.append(f"Has web but no social: SEO/Marketing opportunity (+{bonus})")
                 
@@ -107,24 +101,24 @@ class LeadScorer:
                 if audit:
                     seo = audit.get("seo", {})
                     if not seo.get("has_meta_description") or not seo.get("has_h1"):
-                        bonus = self._gb_seo.get("poor_tech_bonus", SEO_POOR_TECH_BONUS)
+                        bonus = self._gb_seo.get("poor_tech_bonus", 30)
                         score += bonus
                         notes.append(f"Poor technical SEO detected (+{bonus})")
             else:
-                penalty = self._gb_seo.get("no_site_penalty", SEO_NO_SITE_PENALTY)
+                penalty = self._gb_seo.get("no_site_penalty", -20)
                 score += penalty
                 notes.append(f"No website: Cannot sell SEO yet ({penalty})")
 
         elif self.goal == "ads":
             if lead.get("website"):
-                bonus = self._gb_ads.get("has_site_bonus", ADS_HAS_SITE_BONUS)
+                bonus = self._gb_ads.get("has_site_bonus", 20)
                 score += bonus
                 notes.append(f"Has web: Ready for Ads traffic (+{bonus})")
             
             rating = lead.get("google_rating")
-            threshold = self._gb_ads.get("low_rating_threshold", ADS_LOW_RATING_THRESHOLD)
+            threshold = self._gb_ads.get("low_rating_threshold", 4.2)
             if rating and isinstance(rating, (int, float)) and rating < threshold:
-                bonus = self._gb_ads.get("low_rating_bonus", ADS_LOW_RATING_BONUS)
+                bonus = self._gb_ads.get("low_rating_bonus", 15)
                 score += bonus
                 notes.append(f"Rating < {threshold} ({rating}): Needs reputation boost (+{bonus})")
 
@@ -159,7 +153,7 @@ class LeadScorer:
         # High rating as quality signal (only for general)
         if self.goal == "general":
             rating = lead.get("google_rating")
-            threshold = self._gb_general.get("high_rating_threshold", GENERAL_HIGH_RATING_THRESHOLD)
+            threshold = self._gb_general.get("high_rating_threshold", 4.5)
             if rating and isinstance(rating, (int, float)) and rating >= threshold:
                 extra = self.weights.get("pain_points", 15) // 3
                 score += extra
@@ -222,7 +216,6 @@ class LeadScorer:
         addr_lower = address.lower()
 
         # Remove postal codes (e.g., "8780000 La Granja" → "La Granja")
-        import re as _re
         cleaned = _re.sub(r'\b\d{5,7}\b', '', addr_lower).strip()
 
         # Check each part of the address against known locations

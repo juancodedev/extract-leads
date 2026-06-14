@@ -313,7 +313,6 @@ def run_interactive():
             "tiers": {"hot": [80, 100], "warm": [60, 79], "cool": [40, 59], "cold": [0, 39]},
         },
         "output": {"format": "csv", "fields": []},
-        "api_keys": {"google_places": api_key, "hunter": hunter_key},
     }
 
     # Run

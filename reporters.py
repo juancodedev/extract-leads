@@ -10,6 +10,14 @@ from typing import Dict, List
 
 from jinja2 import Environment, FileSystemLoader
 
+from analyzer import (
+    MAX_IMPROVEMENTS,
+    TECH_BASE_SCORE,
+    TECH_GREEN_THRESHOLD,
+    TECH_MAX_SCORE,
+    TECH_YELLOW_THRESHOLD,
+)
+
 TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "templates")
 jinja_env = Environment(loader=FileSystemLoader(TEMPLATE_DIR), autoescape=True)
 
@@ -213,3 +221,157 @@ def export_html(leads: List[Dict], output_path: str):
         f.write(html)
 
     logger.info("Reporte HTML generado: %s", output_path)
+
+
+def export_audit_html(results: List[Dict], output_path: str, total_leads: int, audited: int):
+    """Generate the website audit HTML report from analysis results."""
+    results = sorted(
+        results,
+        key=lambda x: (x.get("lead_score", 0), x.get("business_name", "")),
+        reverse=True,
+    )
+
+    ok_sites = sum(1 for r in results if r.get("status") == "ok")
+    error_sites = sum(1 for r in results if r.get("error"))
+    avg_rt = 0
+    if results:
+        rt_sum = sum(r.get("response_time_ms", 0) for r in results if r.get("status") == "ok")
+        avg_rt = rt_sum // max(ok_sites, 1)
+
+    score_bg = {
+        "✅": "#dcfce7",
+        "⚠️": "#fef3c7",
+        "❌": "#fee2e2",
+        "🔒": "#fef3c7", "🔗": "#fef3c7", "📄": "#fef3c7",
+        "📝": "#fef3c7", "🖼️": "#fef3c7", "📑": "#fef3c7",
+        "📱": "#fef3c7", "💬": "#fef3c7", "📅": "#e0f2fe",
+        "🎯": "#fef3c7", "⭐": "#fef3c7", "📰": "#fef3c7",
+        "💰": "#fef3c7", "🏗️": "#fef3c7", "⚡": "#dcfce7",
+        "🐌": "#fee2e2", "🗜️": "#fef3c7", "📸": "#fef3c7",
+        "📍": "#fef3c7", "🏷️": "#fef3c7", "📊": "#fef3c7",
+        "⏱️": "#fef3c7",
+    }
+
+    cards = []
+    for r in results:
+        name = str(r.get("business_name", "") or "")
+        status = r.get("status", "error")
+        code = r.get("status_code", 0)
+        rt = r.get("response_time_ms", 0)
+        ssl = r.get("ssl", False)
+        url = str(r.get("url_clean", "") or "")
+        tech = ", ".join(str(t) for t in r.get("tech_stack", []))
+        booking = r.get("booking", {})
+        booking_str = ", ".join(booking.get("systems", [])) if booking and booking.get("has_booking") else "No detectado"
+        images = r.get("images", {})
+        seo = r.get("seo", {})
+        contact = r.get("contact", {})
+        content = r.get("content", {})
+        mobile = r.get("mobile", {})
+        improvements = r.get("improvements", [])
+
+        status_emoji = "✅" if status == "ok" else ("⚠️" if code else "❌")
+        status_color = "#22c55e" if status == "ok" else ("#f59e0b" if code else "#ef4444")
+
+        # Technical Score
+        tech_score = TECH_BASE_SCORE
+        if status == "ok": tech_score += 15
+        if ssl: tech_score += 5
+        if rt < 1500: tech_score += 5
+        if seo.get("has_title"): tech_score += 4
+        if seo.get("has_meta_description"): tech_score += 4
+        if seo.get("has_og_title"): tech_score += 3
+        if seo.get("has_canonical"): tech_score += 2
+        if seo.get("has_h1"): tech_score += 3
+        if seo.get("has_favicon"): tech_score += 2
+        if seo.get("has_schema_org"): tech_score += 3
+        if images.get("total", 0) > 0: tech_score += 3
+        if images.get("without_alt", 0) == 0 and images.get("total", 0) > 0: tech_score += 3
+        if images.get("has_lazy_loading"): tech_score += 2
+        if mobile.get("has_viewport"): tech_score += 4
+        if contact.get("has_whatsapp"): tech_score += 4
+        if contact.get("has_contact_form"): tech_score += 3
+        if content.get("has_cta"): tech_score += 3
+        if content.get("has_testimonials"): tech_score += 2
+        if booking.get("has_booking"): tech_score += 3
+        tech_score = min(tech_score, TECH_MAX_SCORE)
+
+        tech_score_color = (
+            "#22c55e" if tech_score >= TECH_GREEN_THRESHOLD
+            else ("#f59e0b" if tech_score >= TECH_YELLOW_THRESHOLD else "#ef4444")
+        )
+
+        lead_score = r.get("lead_score", 0)
+        lead_tier = r.get("lead_tier", "COLD")
+        tier_colors = {"HOT": "#ef4444", "WARM": "#f59e0b", "COOL": "#3b82f6", "COLD": "#6b7280"}
+        lead_color = tier_colors.get(lead_tier, "#6b7280")
+
+        imgs_html = f"{images.get('total', 0)} imágenes"
+        if images.get("without_alt", 0) > 0:
+            imgs_html += f", {images['without_alt']} sin alt"
+
+        contact_icons = ""
+        if contact.get("has_whatsapp"): contact_icons += "💬 "
+        if contact.get("has_phone_link"): contact_icons += "📞 "
+        if contact.get("has_contact_form"): contact_icons += "📝 "
+        if contact.get("has_email_link"): contact_icons += "📧 "
+        if contact.get("has_google_maps_embed"): contact_icons += "📍 "
+
+        mobile_str = "Responsive" if mobile.get("has_viewport") else "No responsive"
+        seo_title = str(seo.get("title", "Sin title") or "Sin title")[:40]
+        industry = str(r.get("industry", "") or "")
+        city = str(r.get("city", "") or "")
+        phone = str(r.get("phone", "") or "")
+
+        cards.append({
+            "name": name,
+            "url": url,
+            "industry": industry,
+            "city": city,
+            "phone": phone,
+            "score": tech_score,
+            "score_color": tech_score_color,
+            "status_emoji": status_emoji,
+            "status_color": status_color,
+            "code": code,
+            "rt": rt,
+            "ssl": ssl,
+            "booking_str": booking_str,
+            "imgs_html": imgs_html,
+            "mobile_str": mobile_str,
+            "tech": tech,
+            "contact_icons": contact_icons,
+            "seo_title": seo_title,
+            "improvements": improvements[:MAX_IMPROVEMENTS],
+            "lead_tier": lead_tier,
+            "lead_color": lead_color,
+            "lead_score": lead_score,
+        })
+
+    now = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+    with_booking = sum(1 for r in results if r.get("booking", {}).get("has_booking"))
+    with_whatsapp = sum(1 for r in results if r.get("contact", {}).get("has_whatsapp"))
+
+    template = jinja_env.get_template("audit_report.html")
+    html = template.render(
+        audited=audited,
+        total_leads=total_leads,
+        now=now,
+        ok_sites=ok_sites,
+        error_sites=error_sites,
+        avg_rt=avg_rt,
+        with_booking=with_booking,
+        with_whatsapp=with_whatsapp,
+        cards=cards,
+        score_bg=score_bg,
+    )
+
+    out_dir = os.path.dirname(output_path)
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
+
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(html)
+
+    logger.info("Auditoría generada: %s", output_path)

@@ -226,6 +226,3 @@ output:
     - lead_tier
     - source
 
-api_keys:
-  google_places: ""
-  hunter: ""

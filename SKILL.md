@@ -98,6 +98,7 @@ python pipeline.py --interactive
 - `agents/`: Specialized skill templates (SEO, Ads, Business, IG).
 
 
+```bash
 # Audit all websites from a CSV
 python pipeline.py --from-csv leads.csv --audit audit.html
 ```
