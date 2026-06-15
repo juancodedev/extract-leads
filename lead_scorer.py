@@ -35,6 +35,11 @@ class LeadScorer:
         self._gb_seo = bonuses.get("seo", {})
         self._gb_ads = bonuses.get("ads", {})
         self._gb_general = bonuses.get("general", {})
+        self._gb_auto = bonuses.get("automatizacion", {})
+        self._gb_reservas = bonuses.get("reservas", {})
+        self._gb_menus = bonuses.get("menus", {})
+        self._gb_inventarios = bonuses.get("inventarios", {})
+        self._gb_pos = bonuses.get("pos", {})
 
         self._build_industry_bonuses()
         self._build_premium_locations()
@@ -122,6 +127,167 @@ class LeadScorer:
                 bonus = self._gb_ads.get("low_rating_bonus", 15)
                 score += bonus
                 notes.append(f"Rating < {threshold} ({rating}): Needs reputation boost (+{bonus})")
+
+        elif self.goal == "automatizacion":
+            gb = self._gb_auto
+            if not lead.get("website"):
+                bonus = gb.get("no_site_bonus", 40)
+                score += bonus
+                notes.append(f"No website: automation opportunity (+{bonus})")
+                flags["needs_website"] = True
+
+            # Check booking — from audit_data if available, or from booking_links field
+            audit = lead.get("audit_data", {})
+            has_booking = (
+                audit.get("booking", {}).get("has_booking") or
+                bool(lead.get("booking_links"))
+            )
+            if not has_booking:
+                bonus = gb.get("no_booking_bonus", 30)
+                score += bonus
+                notes.append(f"No booking system (+{bonus})")
+            elif lead.get("website") and not has_booking:
+                bonus = gb.get("has_site_no_booking_bonus", 15)
+                score += bonus
+                notes.append(f"Has site but no booking (+{bonus})")
+
+            if not lead.get("whatsapp_link"):
+                bonus = gb.get("no_whatsapp_bonus", 20)
+                score += bonus
+                notes.append(f"No WhatsApp: manual communication (+{bonus})")
+
+        elif self.goal == "reservas":
+            gb = self._gb_reservas
+            audit = lead.get("audit_data", {})
+            has_booking = (
+                audit.get("booking", {}).get("has_booking") or
+                bool(lead.get("booking_links"))
+            )
+
+            if has_booking:
+                penalty = gb.get("has_booking_penalty", -30)
+                score += penalty
+                notes.append(f"Already has booking ({penalty})")
+            else:
+                bonus = gb.get("no_booking_bonus", 40)
+                score += bonus
+                notes.append(f"No booking: reservation system opportunity (+{bonus})")
+
+                if lead.get("website"):
+                    bonus2 = gb.get("has_site_no_booking_bonus", 20)
+                    score += bonus2
+                    notes.append(f"Has site, add booking (+{bonus2})")
+
+            # Service industry bonus
+            industry = (lead.get("industry") or "").lower()
+            service_keywords = ["barbería", "barberia", "peluquería", "spa", "estética", "belleza",
+                                "salud", "bienestar", "clínica", "masajes", "veterinaria", "mascotas"]
+            if any(kw in industry for kw in service_keywords):
+                bonus = gb.get("service_industry_bonus", 15)
+                score += bonus
+                notes.append(f"Service industry (+{bonus})")
+
+        elif self.goal == "menus":
+            gb = self._gb_menus
+            industry = (lead.get("industry") or "").lower()
+            food_keywords = ["cafetería", "café", "restaurante", "restaurant",
+                             "comida", "panadería", "pastelería", "food"]
+            # Use word-boundary matching to avoid false positives (e.g. "bar" in "barbería")
+            industry_words = set(_re.split(r"[,\s]+", industry))
+            is_food = any(kw in industry_words for kw in food_keywords)
+
+            if is_food:
+                bonus = gb.get("food_industry_bonus", 35)
+                score += bonus
+                notes.append(f"Food industry (+{bonus})")
+            else:
+                penalty = gb.get("non_food_penalty", -10)
+                score += penalty
+                notes.append(f"Non-food industry ({penalty})")
+
+            audit = lead.get("audit_data", {})
+            content = audit.get("content", {})
+            has_prices = content.get("has_prices", False)
+            has_gallery = content.get("has_gallery", False)
+
+            if lead.get("website"):
+                if not has_prices:
+                    bonus = gb.get("no_prices_bonus", 30)
+                    score += bonus
+                    notes.append(f"No prices on website (+{bonus})")
+                if not has_gallery:
+                    bonus = gb.get("no_gallery_bonus", 20)
+                    score += bonus
+                    notes.append(f"No gallery on website (+{bonus})")
+                if has_prices and has_gallery:
+                    penalty = gb.get("mature_site_penalty", -20)
+                    score += penalty
+                    notes.append(f"Mature site: menus already present ({penalty})")
+
+        elif self.goal == "inventarios":
+            gb = self._gb_inventarios
+            industry = (lead.get("industry") or "").lower()
+            retail_keywords = ["tienda", "retail", "minimarket", "ferretería", "almacén",
+                               "boutique", "farmacia", "supermercado"]
+            is_retail = any(kw in industry for kw in retail_keywords)
+
+            if is_retail:
+                bonus = gb.get("retail_industry_bonus", 30)
+                score += bonus
+                notes.append(f"Retail industry (+{bonus})")
+
+            if lead.get("website"):
+                bonus = gb.get("has_site_bonus", 20)
+                score += bonus
+                notes.append(f"Has website (+{bonus})")
+
+                audit = lead.get("audit_data", {})
+                tech = audit.get("tech_stack", [])
+                basic_cms = any(cms in str(tech) for cms in ["UENI", "Custom", "Unknown", "Wix", "MiNegocio"])
+                if basic_cms:
+                    bonus = gb.get("basic_cms_bonus", 15)
+                    score += bonus
+                    notes.append(f"Basic CMS detected (+{bonus})")
+
+            has_booking = (
+                lead.get("audit_data", {}).get("booking", {}).get("has_booking") or
+                bool(lead.get("booking_links"))
+            )
+            if has_booking:
+                penalty = gb.get("has_booking_penalty", -10)
+                score += penalty
+                notes.append(f"Already has digital tools ({penalty})")
+
+        elif self.goal == "pos":
+            gb = self._gb_pos
+            has_phone = bool(lead.get("phone"))
+            has_whatsapp = bool(lead.get("whatsapp_link"))
+
+            if has_phone and not has_whatsapp:
+                bonus = gb.get("phone_no_whatsapp_bonus", 30)
+                score += bonus
+                notes.append(f"Phone orders, no WhatsApp (+{bonus})")
+
+            if not lead.get("website"):
+                bonus = gb.get("no_site_bonus", 25)
+                score += bonus
+                notes.append(f"No website: POS opportunity (+{bonus})")
+            else:
+                audit = lead.get("audit_data", {})
+                contact = audit.get("contact", {})
+                if not contact.get("has_contact_form"):
+                    bonus = gb.get("site_no_form_bonus", 20)
+                    score += bonus
+                    notes.append(f"Website without contact form (+{bonus})")
+
+            # Digital maturity penalty
+            if has_whatsapp and lead.get("website"):
+                audit = lead.get("audit_data", {})
+                has_form = audit.get("contact", {}).get("has_contact_form", False)
+                if has_form:
+                    penalty = gb.get("digital_mature_penalty", -15)
+                    score += penalty
+                    notes.append(f"Digitally mature — less POS need ({penalty})")
 
         else:  # General quality-based scoring
             if lead.get("website"):

@@ -105,6 +105,11 @@ python cli.py --from-csv leads.csv --audit auditoria.html
 | `seo` | Prioriza negocios con web pero sin redes (+20) o con SEO técnico pobre (+30). Penaliza sin web (-20). |
 | `ads` | Prioriza negocios con web (+20) y rating bajo 4.2 (+15). |
 | `general` | Calidad de presencia digital: web (+15), redes (+20), WhatsApp (+10), rating 4.5+ (+5). |
+| `automatizacion` | Prioriza negocios sin web (+40), sin booking (+30) y sin WhatsApp (+20) — oportunidad de automatización completa. |
+| `reservas` | Prioriza negocios de servicio sin sistema de booking (+40). Penaliza si ya tienen (-30). |
+| `menus` | Prioriza negocios de comida (+35) con sitio web sin precios (+30) ni galería (+20). |
+| `inventarios` | Prioriza retail (+30) con sitio web (+20) y CMS básico (+15). |
+| `pos` | Prioriza negocios con teléfono pero sin WhatsApp (+30), sin web (+25) o sin formulario de contacto (+20). |
 
 **Tiers:** HOT (80-100) → WARM (60-79) → COOL (40-59) → COLD (0-39)
 

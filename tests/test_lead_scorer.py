@@ -240,3 +240,69 @@ class TestExtractCity:
         result = LeadScorer.extract_city("8780000 La Granja", base_config)
         # La Granja is not in base_config locations, but postal code is stripped
         assert "8780000" not in result
+
+
+class TestAutomatizacionGoal:
+    def test_no_website_no_booking_no_whatsapp_is_hot(self, base_config):
+        scorer = LeadScorer(base_config, goal="automatizacion")
+        lead = make_lead(website="", whatsapp_link="", booking_links="", google_type="")
+        result = scorer.score(lead)
+        assert result["lead_score"] >= 75
+        assert "automation opportunity" in result["scoring_notes"].lower()
+
+    def test_has_whatsapp_has_booking_lower_score(self, base_config):
+        scorer = LeadScorer(base_config, goal="automatizacion")
+        lead = make_lead(
+            website="https://example.com",
+            whatsapp_link="https://wa.me/569",
+            booking_links="agendapro.com/test",
+            phone="",
+            city="Maipú",
+            google_type="",
+        )
+        result = scorer.score(lead)
+        assert result["lead_score"] < 70
+
+
+class TestReservasGoal:
+    def test_no_booking_service_industry_is_hot(self, base_config):
+        scorer = LeadScorer(base_config, goal="reservas")
+        lead = make_lead(website="https://example.com", industry="Barbería y Peluquería", booking_links="")
+        result = scorer.score(lead)
+        assert "service industry" in result["scoring_notes"].lower()
+
+    def test_has_booking_penalty(self, base_config):
+        scorer = LeadScorer(base_config, goal="reservas")
+        lead = make_lead(booking_links="calendly.com/test")
+        result = scorer.score(lead)
+        assert "Already has booking" in result["scoring_notes"]
+
+
+class TestMenusGoal:
+    def test_food_industry_bonus(self, base_config):
+        scorer = LeadScorer(base_config, goal="menus")
+        lead = make_lead(industry="Cafetería y Restaurante")
+        result = scorer.score(lead)
+        assert "Food industry" in result["scoring_notes"]
+
+    def test_non_food_penalty(self, base_config):
+        scorer = LeadScorer(base_config, goal="menus")
+        lead = make_lead(industry="Barbería y Peluquería")
+        result = scorer.score(lead)
+        assert "Non-food" in result["scoring_notes"]
+
+
+class TestInventariosGoal:
+    def test_retail_industry_bonus(self, base_config):
+        scorer = LeadScorer(base_config, goal="inventarios")
+        lead = make_lead(industry="Tiendas y Retail", website="https://example.com")
+        result = scorer.score(lead)
+        assert "Retail industry" in result["scoring_notes"]
+
+
+class TestPosGoal:
+    def test_phone_no_whatsapp_bonus(self, base_config):
+        scorer = LeadScorer(base_config, goal="pos")
+        lead = make_lead(phone="+56912345678", whatsapp_link="", website="")
+        result = scorer.score(lead)
+        assert "Phone orders" in result["scoring_notes"]

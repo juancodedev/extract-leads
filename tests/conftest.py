@@ -52,6 +52,37 @@ def base_config() -> dict:
                 "seo": {"no_social_bonus": 20, "poor_tech_bonus": 30, "no_site_penalty": -20},
                 "ads": {"has_site_bonus": 20, "low_rating_bonus": 15, "low_rating_threshold": 4.2},
                 "general": {"high_rating_threshold": 4.5},
+                "automatizacion": {
+                    "no_site_bonus": 40,
+                    "no_booking_bonus": 30,
+                    "no_whatsapp_bonus": 20,
+                    "has_site_no_booking_bonus": 15,
+                },
+                "reservas": {
+                    "no_booking_bonus": 40,
+                    "has_site_no_booking_bonus": 20,
+                    "service_industry_bonus": 15,
+                    "has_booking_penalty": -30,
+                },
+                "menus": {
+                    "food_industry_bonus": 35,
+                    "non_food_penalty": -10,
+                    "no_prices_bonus": 30,
+                    "no_gallery_bonus": 20,
+                    "mature_site_penalty": -20,
+                },
+                "inventarios": {
+                    "retail_industry_bonus": 30,
+                    "has_site_bonus": 20,
+                    "basic_cms_bonus": 15,
+                    "has_booking_penalty": -10,
+                },
+                "pos": {
+                    "phone_no_whatsapp_bonus": 30,
+                    "no_site_bonus": 25,
+                    "site_no_form_bonus": 20,
+                    "digital_mature_penalty": -15,
+                },
             },
             "tiers": {
                 "hot": [80, 100],
