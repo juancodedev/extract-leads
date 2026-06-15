@@ -176,7 +176,7 @@ async def main():
 
     # Interactive mode
     if args.interactive:
-        run_interactive()
+        await run_interactive()
         return
 
     # Load configuration
@@ -242,7 +242,7 @@ async def main():
     return leads
 
 
-def run_interactive():
+async def run_interactive():
     """Interactive mode: asks questions, builds config, and runs the prospecting engine."""
     print("\n" + "=" * 55)
     print(" 🚀 PROSPECTING ENGINE & BUSINESS AUDITOR")
@@ -441,17 +441,15 @@ def run_interactive():
     }
 
     # Run
-    leads = asyncio.run(
-        run_pipeline(
-            config,
-            api_key,
-            hunter_key,
-            limit,
-            goal=goal,
-            do_seo=do_seo,
-            do_ads=do_ads,
-            do_ig_web=do_ig_web,
-        )
+    leads = await run_pipeline(
+        config,
+        api_key,
+        hunter_key,
+        limit,
+        goal=goal,
+        do_seo=do_seo,
+        do_ads=do_ads,
+        do_ig_web=do_ig_web,
     )
 
     if not leads:
@@ -488,7 +486,7 @@ def run_interactive():
     audit_choice = input("\n¿Auditar websites? (s/n, default: s): ").strip().lower()
     if audit_choice != "n":
         audit_output = output.replace(".csv", "_audit.html")
-        asyncio.run(generate_audit_report(leads, audit_output))
+        await generate_audit_report(leads, audit_output)
 
     print("\n✅ Listo!")
 
