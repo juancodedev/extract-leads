@@ -370,7 +370,7 @@ async def run_interactive():
         },
         "extraction": {
             "max_pages": 3,
-            "page_token_delay": 2,
+            "page_token_delay": 3,
             "request_timeout": 15,
             "max_retries": 3,
             "retry_backoff": 1.5,

@@ -11,7 +11,7 @@ import aiohttp
 logger = logging.getLogger(__name__)
 
 MAX_PAGES = 3
-PAGE_TOKEN_DELAY = 2  # seconds
+PAGE_TOKEN_DELAY = 3  # seconds — pagetokens need time to activate on Google's side
 REQUEST_TIMEOUT = 15  # seconds
 MAX_RETRIES = 3
 RETRY_BACKOFF = 1.5  # seconds multiplier
@@ -101,13 +101,38 @@ class PlacesExtractor:
                 if data.get("status") == "ZERO_RESULTS":
                     logger.info("No results for '%s' in %s", keyword, location)
                     break
-                logger.warning(
-                    "Places API error: %s — %s (params: %s)",
-                    data.get("status"),
-                    data.get("error_message", "no details"),
-                    {k: v for k, v in params.items() if k != "key"},
-                )
-                break
+
+                # INVALID_REQUEST with pagetoken = token not ready yet. Retry with backoff.
+                if data.get("status") == "INVALID_REQUEST" and "pagetoken" in params:
+                    retry_delay = self.page_token_delay * (pages + 1)
+                    logger.debug(
+                        "Pagetoken not ready, waiting %ds (attempt %d)",
+                        retry_delay, pages + 1,
+                    )
+                    await asyncio.sleep(retry_delay)
+                    try:
+                        data = await self._fetch_with_retry(
+                            f"{self.BASE_URL}/textsearch/json", params
+                        )
+                        if data.get("status") == "OK":
+                            logger.info("Pagetoken retry succeeded")
+                            # fall through to process results below
+                        else:
+                            logger.warning(
+                                "Pagetoken retry also failed: %s", data.get("status")
+                            )
+                            break
+                    except (aiohttp.ClientError, asyncio.TimeoutError):
+                        logger.warning("Pagetoken retry request failed")
+                        break
+                else:
+                    logger.warning(
+                        "Places API error: %s — %s (params: %s)",
+                        data.get("status"),
+                        data.get("error_message", "no details"),
+                        {k: v for k, v in params.items() if k != "key"},
+                    )
+                    break
 
             # Collect place_ids for parallel detail fetch
             batch_ids = []

@@ -155,7 +155,7 @@ scoring:
 ```yaml
 extraction:
   max_pages: 3            # Páginas de resultados de Google Places
-  page_token_delay: 2     # Segundos entre páginas
+  page_token_delay: 3     # Segundos entre páginas (Google tarda en activar tokens)
   request_timeout: 15     # Timeout HTTP
   max_retries: 3          # Reintentos con backoff
   retry_backoff: 1.5      # Factor de backoff exponencial
