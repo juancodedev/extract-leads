@@ -89,19 +89,23 @@ class PlacesExtractor:
 
         pages = 0
         while pages < self.max_pages:
+            logger.debug("Places API request page %d: %s", pages + 1, {k: v for k, v in params.items() if k != "key"})
             try:
                 data = await self._fetch_with_retry(f"{self.BASE_URL}/textsearch/json", params)
             except (aiohttp.ClientError, asyncio.TimeoutError) as e:
                 logger.error("Search failed: %s", e)
                 break
 
+            logger.debug("Places API response status: %s", data.get("status"))
             if data.get("status") != "OK":
                 if data.get("status") == "ZERO_RESULTS":
+                    logger.info("No results for '%s' in %s", keyword, location)
                     break
                 logger.warning(
-                    "Places API error: %s - %s",
+                    "Places API error: %s — %s (params: %s)",
                     data.get("status"),
-                    data.get("error_message", ""),
+                    data.get("error_message", "no details"),
+                    {k: v for k, v in params.items() if k != "key"},
                 )
                 break
 
@@ -151,7 +155,8 @@ class PlacesExtractor:
             if not next_token:
                 break
 
-            params["pagetoken"] = next_token
+            # Google Places requires ONLY pagetoken + key on subsequent pages
+            params = {"pagetoken": next_token, "key": self.api_key}
             await asyncio.sleep(self.page_token_delay)
             pages += 1
 
