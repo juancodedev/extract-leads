@@ -73,6 +73,72 @@ search:
         - "gestión de pagos"
         - "inventario de productos"
 
+    - name: "Tiendas de Barrio y Minimarkets"
+      keywords:
+        - "almacén"
+        - "minimarket"
+        - "tienda de barrio"
+        - "supermercado"
+        - "boutique"
+        - "ferretería"
+        - "librería"
+        - "almacen"
+        - "despensa"
+      bonus_score: 4
+      pain_points:
+        - "inventario"
+        - "pedidos online"
+        - "catálogo digital"
+
+    - name: "Bares y Cervecerías"
+      keywords:
+        - "bar"
+        - "pub"
+        - "cervecería"
+        - "bar de copas"
+        - "discoteca"
+        - "club nocturno"
+        - "barra"
+        - "cerveza artesanal"
+      bonus_score: 5
+      pain_points:
+        - "carta digital"
+        - "reservas"
+        - "pedidos online"
+
+    - name: "Comida Rápida y Rotiserías"
+      keywords:
+        - "rotisería"
+        - "delivery"
+        - "pizzería"
+        - "sushi"
+        - "comida rápida"
+        - "comida para llevar"
+        - "sandwichería"
+        - "comida china"
+        - "empanadas"
+      bonus_score: 5
+      pain_points:
+        - "pedidos online"
+        - "delivery"
+        - "menú digital"
+
+    - name: "Heladerías y Postres"
+      keywords:
+        - "heladería"
+        - "helado"
+        - "postres"
+        - "dulces"
+        - "gelato"
+        - "frozen yogurt"
+        - "paletas"
+        - "pastelería"
+      bonus_score: 4
+      pain_points:
+        - "carta digital"
+        - "delivery"
+        - "pedidos online"
+
   locations:
     # Metropolitana
     - city: "Santiago"

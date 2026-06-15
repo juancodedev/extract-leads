@@ -191,7 +191,9 @@ class LeadScorer:
             gb = self._gb_menus
             industry = (lead.get("industry") or "").lower()
             food_keywords = ["cafetería", "café", "restaurante", "restaurant",
-                             "comida", "panadería", "pastelería", "food"]
+                             "comida", "panadería", "pastelería", "food",
+                             "heladería", "helado", "postres", "rotisería",
+                             "pizzería", "sushi", "empanadas"]
             # Use word-boundary matching to avoid false positives (e.g. "bar" in "barbería")
             industry_words = set(_re.split(r"[,\s]+", industry))
             is_food = any(kw in industry_words for kw in food_keywords)
@@ -228,7 +230,7 @@ class LeadScorer:
             gb = self._gb_inventarios
             industry = (lead.get("industry") or "").lower()
             retail_keywords = ["tienda", "retail", "minimarket", "ferretería", "almacén",
-                               "boutique", "farmacia", "supermercado"]
+                               "boutique", "farmacia", "supermercado", "librería", "despensa"]
             is_retail = any(kw in industry for kw in retail_keywords)
 
             if is_retail:

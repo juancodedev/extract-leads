@@ -155,9 +155,12 @@ _FALLBACK_INDUSTRIES: dict[str, dict[str, Any]] = {
         "bonus_score": 3,
     },
     "5": {
-        "name": "Tiendas y Retail",
-        "keywords": ["minimarket", "ferretería", "tienda", "almacén", "boutique", "almacen"],
-        "bonus_score": 3,
+        "name": "Tiendas de Barrio y Minimarkets",
+        "keywords": [
+            "almacén", "minimarket", "tienda de barrio", "supermercado",
+            "boutique", "ferretería", "librería", "almacen", "despensa",
+        ],
+        "bonus_score": 4,
     },
     "6": {
         "name": "Servicios de Limpieza",
@@ -214,6 +217,31 @@ _FALLBACK_INDUSTRIES: dict[str, dict[str, Any]] = {
             "electricista",
         ],
         "bonus_score": 5,
+    },
+    "13": {
+        "name": "Bares y Cervecerías",
+        "keywords": [
+            "bar", "pub", "cervecería", "bar de copas", "discoteca",
+            "club nocturno", "barra", "cerveza artesanal",
+        ],
+        "bonus_score": 5,
+    },
+    "14": {
+        "name": "Comida Rápida y Rotiserías",
+        "keywords": [
+            "rotisería", "delivery", "pizzería", "sushi",
+            "comida rápida", "comida para llevar", "sandwichería",
+            "comida china", "empanadas",
+        ],
+        "bonus_score": 5,
+    },
+    "15": {
+        "name": "Heladerías y Postres",
+        "keywords": [
+            "heladería", "helado", "postres", "dulces",
+            "gelato", "frozen yogurt", "paletas", "pastelería",
+        ],
+        "bonus_score": 4,
     },
 }
 
