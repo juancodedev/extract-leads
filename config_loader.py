@@ -275,31 +275,19 @@ _FALLBACK_LOCATIONS: list[dict[str, Any]] = [
 
 
 def get_default_industries() -> dict[str, dict[str, Any]]:
-    """Return industry definitions from config.yaml for interactive menu.
+    """Return the full industry catalog for the interactive menu.
 
-    Returns a dict with string keys '1'..'N' for interactive menu ordering.
-    Falls back to hardcoded defaults if config.yaml is missing or empty.
+    Returns a dict with string keys '1'..'N' for menu ordering.
+    This always returns the complete fallback list — the interactive
+    menu shows ALL available options regardless of config.yaml contents.
     """
-    try:
-        raw = _load_yaml("config.yaml")
-        industries = raw.get("search", {}).get("industries", [])
-        if industries:
-            return {str(i + 1): ind for i, ind in enumerate(industries)}
-    except (Exception, SystemExit):
-        pass
     return _FALLBACK_INDUSTRIES
 
 
 def get_default_locations() -> list[dict[str, Any]]:
-    """Return location definitions from config.yaml for interactive menu.
+    """Return the full location catalog for the interactive menu.
 
-    Falls back to hardcoded defaults if config.yaml is missing or empty.
+    This always returns the complete fallback list — the interactive
+    menu shows ALL available locations regardless of config.yaml contents.
     """
-    try:
-        raw = _load_yaml("config.yaml")
-        locations = raw.get("search", {}).get("locations", [])
-        if locations:
-            return locations  # type: ignore[no-any-return]
-    except (Exception, SystemExit):
-        pass
     return _FALLBACK_LOCATIONS

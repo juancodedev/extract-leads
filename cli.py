@@ -460,20 +460,15 @@ async def run_interactive():
     export_csv(leads, output)
     print_summary(leads)
 
-    # Write config.yaml so subsequent --config runs work
+    # Ask before saving config
     config_path = "config.yaml"
-    if os.path.exists(config_path):
-        overwrite = input(f"\n⚠️  {config_path} ya existe. ¿Sobrescribir? (s/n): ").strip().lower()
-        if overwrite != "s":
-            logger.info("Configuración no guardada. Usando solo en memoria.")
-        else:
-            with open(config_path, "w", encoding="utf-8") as f:
-                yaml.dump(config, f, allow_unicode=True, default_flow_style=False)
-            logger.info("Configuración guardada en %s", config_path)
-    else:
+    save_choice = input("\n¿Guardar esta configuración para futuras búsquedas? (s/n, default: s): ").strip().lower()
+    if save_choice != "n":
         with open(config_path, "w", encoding="utf-8") as f:
             yaml.dump(config, f, allow_unicode=True, default_flow_style=False)
         logger.info("Configuración guardada en %s", config_path)
+    else:
+        logger.info("Configuración no guardada — solo en memoria.")
 
     # Offer HTML
     html_choice = input("\n¿Generar reporte HTML? (s/n, default: s): ").strip().lower()

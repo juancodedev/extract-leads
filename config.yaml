@@ -1,135 +1,322 @@
+# Lead Extractor Configuration
+# Generated for: Automatización General
+# Target: Micro-empresas Chile (1-10 empleados)
+
 business:
-  description: ''
-  name: Mi Negocio
-  product_type: automatización
-enrichment:
-  hunter_timeout: 10
-  max_retries: 3
-  retry_backoff: 1.5
-  website_scan_timeout: 10
-extraction:
-  max_pages: 3
-  max_retries: 3
-  page_token_delay: 3
-  request_timeout: 15
-  retry_backoff: 1.5
-output:
-  fields: []
-  format: csv
+  name: "Mi Solución"
+  product_type: "automatización general"
+  description: "Automatización de procesos para micro-empresas: agendamiento, inventario, facturación y gestión"
+
+search:
+  industries:
+    - name: "Barbería y Peluquería"
+      keywords:
+        - "barbería"
+        - "barber"
+        - "barbershop"
+        - "peluquería"
+        - "salón de belleza"
+        - "corte de cabello"
+        - "barber shop"
+        - "barba"
+        - "barberia"
+      bonus_score: 5
+      pain_points:
+        - "agendamiento de turnos"
+        - "gestión de inventario"
+        - "control de caja"
+
+    - name: "Cafetería y Restaurante"
+      keywords:
+        - "cafetería"
+        - "café"
+        - "coffee shop"
+        - "restaurante"
+        - "panadería"
+        - "pastelería"
+      bonus_score: 5
+      pain_points:
+        - "turnos de personal"
+        - "inventario de insumos"
+        - "reportes de ventas"
+
+    - name: "Servicios Profesionales"
+      keywords:
+        - "contador"
+        - "consultor"
+        - "abogado"
+        - "asesor"
+        - "estudio contable"
+        - "consultoría"
+      bonus_score: 5
+      pain_points:
+        - "reportes a clientes"
+        - "facturación"
+        - "gestión documental"
+
+    - name: "Salud y Belleza"
+      keywords:
+        - "spa"
+        - "masajes"
+        - "centro de estética"
+        - "clínica estética"
+        - "depilación"
+        - "tratamientos faciales"
+        - "estética"
+        - "belleza"
+        - "wellness"
+        - "centro de belleza"
+        - "salón de uñas"
+      bonus_score: 3
+      pain_points:
+        - "agendamiento de citas"
+        - "gestión de pagos"
+        - "inventario de productos"
+
+    - name: "Tiendas de Barrio y Minimarkets"
+      keywords:
+        - "almacén"
+        - "minimarket"
+        - "tienda de barrio"
+        - "supermercado"
+        - "boutique"
+        - "ferretería"
+        - "librería"
+        - "almacen"
+        - "despensa"
+      bonus_score: 4
+      pain_points:
+        - "inventario"
+        - "pedidos online"
+        - "catálogo digital"
+
+    - name: "Bares y Cervecerías"
+      keywords:
+        - "bar"
+        - "pub"
+        - "cervecería"
+        - "bar de copas"
+        - "discoteca"
+        - "club nocturno"
+        - "barra"
+        - "cerveza artesanal"
+      bonus_score: 5
+      pain_points:
+        - "carta digital"
+        - "reservas"
+        - "pedidos online"
+
+    - name: "Comida Rápida y Rotiserías"
+      keywords:
+        - "rotisería"
+        - "delivery"
+        - "pizzería"
+        - "sushi"
+        - "comida rápida"
+        - "comida para llevar"
+        - "sandwichería"
+        - "comida china"
+        - "empanadas"
+      bonus_score: 5
+      pain_points:
+        - "pedidos online"
+        - "delivery"
+        - "menú digital"
+
+    - name: "Heladerías y Postres"
+      keywords:
+        - "heladería"
+        - "helado"
+        - "postres"
+        - "dulces"
+        - "gelato"
+        - "frozen yogurt"
+        - "paletas"
+        - "pastelería"
+      bonus_score: 4
+      pain_points:
+        - "carta digital"
+        - "delivery"
+        - "pedidos online"
+
+  locations:
+    # Metropolitana
+    - city: "Santiago"
+      region: "Metropolitana"
+      premium: true
+    - city: "Las Condes"
+      region: "Metropolitana"
+      premium: true
+    - city: "Providencia"
+      region: "Metropolitana"
+      premium: true
+    - city: "Ñuñoa"
+      region: "Metropolitana"
+      premium: true
+    - city: "Vitacura"
+      region: "Metropolitana"
+      premium: true
+    - city: "La Florida"
+      region: "Metropolitana"
+      premium: false
+    - city: "Maipú"
+      region: "Metropolitana"
+      premium: false
+    - city: "Puente Alto"
+      region: "Metropolitana"
+      premium: false
+    - city: "San Bernardo"
+      region: "Metropolitana"
+      premium: false
+    - city: "Quilicura"
+      region: "Metropolitana"
+      premium: false
+
+    # Valparaíso
+    - city: "Valparaíso"
+      region: "Valparaíso"
+      premium: false
+    - city: "Viña del Mar"
+      region: "Valparaíso"
+      premium: true
+    - city: "Concón"
+      region: "Valparaíso"
+      premium: false
+
+    # Biobío
+    - city: "Concepción"
+      region: "Biobío"
+      premium: false
+    - city: "Talcahuano"
+      region: "Biobío"
+      premium: false
+    - city: "Chillán"
+      region: "Biobío"
+      premium: false
+
+    # Otras regiones
+    - city: "Antofagasta"
+      region: "Antofagasta"
+      premium: false
+    - city: "La Serena"
+      region: "Coquimbo"
+      premium: false
+    - city: "Rancagua"
+      region: "O'Higgins"
+      premium: false
+    - city: "Talca"
+      region: "Maule"
+      premium: false
+    - city: "Temuco"
+      region: "Araucanía"
+      premium: false
+    - city: "Puerto Montt"
+      region: "Los Lagos"
+      premium: false
+    - city: "Iquique"
+      region: "Tarapacá"
+      premium: false
+    - city: "Arica"
+      region: "Arica y Parinacota"
+      premium: false
+    - city: "Copiapo"
+      region: "Atacama"
+      premium: false
+
+  target_size: "micro"
+
 scoring:
   base_score: 50
+  max_score: 100
   dup_threshold: 85
+  weights:
+    website: 15
+    active_social: 20
+    whatsapp: 10
+    pain_points: 15
+    multiple_channels: 10
+    owner_info: 5
+    premium_location: 10
+  thresholds:
+    slow_ms: 3000
+    warn_ms: 1500
   goal_bonuses:
+    web:
+      no_site_bonus: 40
+      has_site_penalty: -10
+    seo:
+      no_social_bonus: 20
+      poor_tech_bonus: 30
+      no_site_penalty: -20
     ads:
       has_site_bonus: 20
       low_rating_bonus: 15
       low_rating_threshold: 4.2
-    automatizacion:
-      has_site_no_booking_bonus: 15
-      no_booking_bonus: 30
-      no_site_bonus: 40
-      no_whatsapp_bonus: 20
     general:
       high_rating_threshold: 4.5
-    inventarios:
-      basic_cms_bonus: 15
-      has_booking_penalty: -10
-      has_site_bonus: 20
-      retail_industry_bonus: 30
+    automatizacion:
+      no_site_bonus: 40
+      no_booking_bonus: 30
+      no_whatsapp_bonus: 20
+      has_site_no_booking_bonus: 15
+    reservas:
+      no_booking_bonus: 40
+      has_site_no_booking_bonus: 20
+      service_industry_bonus: 15
+      has_booking_penalty: -30
     menus:
       food_industry_bonus: 35
-      mature_site_penalty: -20
-      no_gallery_bonus: 20
-      no_prices_bonus: 30
       non_food_penalty: -10
+      no_prices_bonus: 30
+      no_gallery_bonus: 20
+      mature_site_penalty: -20
+    inventarios:
+      retail_industry_bonus: 30
+      has_site_bonus: 20
+      basic_cms_bonus: 15
+      has_booking_penalty: -10
     pos:
-      digital_mature_penalty: -15
-      no_site_bonus: 25
       phone_no_whatsapp_bonus: 30
+      no_site_bonus: 25
       site_no_form_bonus: 20
-    reservas:
-      has_booking_penalty: -30
-      has_site_no_booking_bonus: 20
-      no_booking_bonus: 40
-      service_industry_bonus: 15
-    seo:
-      no_site_penalty: -20
-      no_social_bonus: 20
-      poor_tech_bonus: 30
-    web:
-      has_site_penalty: -10
-      no_site_bonus: 40
-  max_score: 100
-  thresholds:
-    slow_ms: 3000
-    warn_ms: 1500
+      digital_mature_penalty: -15
   tiers:
-    cold:
-    - 0
-    - 39
-    cool:
-    - 40
-    - 59
-    hot:
-    - 80
-    - 100
-    warm:
-    - 60
-    - 79
-  weights:
-    active_social: 20
-    multiple_channels: 10
-    owner_info: 5
-    pain_points: 15
-    premium_location: 10
-    website: 15
-    whatsapp: 10
-search:
-  industries:
-  - bonus_score: 5
-    keywords:
-    - bar
-    - pub
-    - cervecería
-    - bar de copas
-    - discoteca
-    - club nocturno
-    - barra
-    - cerveza artesanal
-    name: Bares y Cervecerías
-    pain_points:
-    - carta digital
-    - reservas
-    - pedidos online
-  locations:
-  - city: Santiago
-    premium: true
-    region: Metropolitana
-  - city: Las Condes
-    premium: true
-    region: Metropolitana
-  - city: Providencia
-    premium: true
-    region: Metropolitana
-  - city: Ñuñoa
-    premium: true
-    region: Metropolitana
-  - city: Vitacura
-    premium: true
-    region: Metropolitana
-  - city: La Florida
-    premium: false
-    region: Metropolitana
-  - city: Maipú
-    premium: false
-    region: Metropolitana
-  - city: Puente Alto
-    premium: false
-    region: Metropolitana
-  - city: San Bernardo
-    premium: false
-    region: Metropolitana
-  - city: Quilicura
-    premium: false
-    region: Metropolitana
-  target_size: micro
+    hot: [80, 100]
+    warm: [60, 79]
+    cool: [40, 59]
+    cold: [0, 39]
+
+# ── Extraction tuning ──
+extraction:
+  max_pages: 3
+  page_token_delay: 2
+  request_timeout: 15
+  max_retries: 3
+  retry_backoff: 1.5
+
+# ── Enrichment tuning ──
+enrichment:
+  hunter_timeout: 10
+  website_scan_timeout: 10
+  max_retries: 3
+  retry_backoff: 1.5
+
+output:
+  format: csv
+  fields:
+    - business_name
+    - industry
+    - contact_person
+    - phone
+    - email
+    - address
+    - city
+    - website
+    - facebook_url
+    - instagram_handle
+    - google_rating
+    - review_count
+    - lead_score
+    - lead_tier
+    - source
+
