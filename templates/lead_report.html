@@ -252,8 +252,7 @@ a.contact-badge:hover { opacity:1; transform:scale(1.15); }
 {% block extra_js %}
 {% if crm_enabled %}
 <script>
-const CRM_API_URL = {{ crm_server_url|default('')|tojson }};
-
+// Las peticiones usan ruta relativa (/api/send-lead) — serve_report.py actúa como proxy
 function leadDataByIndex(idx) {
   const script = document.getElementById('leads-data');
   if (!script) return null;
@@ -284,7 +283,9 @@ async function sendToCRM(btn) {
   try {
     const payload = {
       empresa: lead.business_name || lead.empresa || '',
-      email: lead.email || '',
+      email: lead.email || (lead.business_name 
+        ? lead.business_name.toLowerCase().replace(/[^a-z0-9]/g, '') + '@sin-email.lead' 
+        : 'sin-email@lead.local'),
       origen: 'Lead Extractor - Google Maps',
       nombre: lead.contact_person || lead.nombre || lead.business_name || '',
       telefono: lead.phone || lead.telefono || '',
@@ -297,7 +298,7 @@ async function sendToCRM(btn) {
       status: 'Nuevo'
     };
 
-    const url = CRM_API_URL ? CRM_API_URL + '/api/send-lead' : '/api/send-lead';
+    const url = '/api/send-lead';
     const resp = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

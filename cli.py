@@ -45,13 +45,18 @@ def _crm_authenticate() -> str | None:
     req = Request(url, data=payload, headers={"Content-Type": "application/json"})
 
     try:
+        req = Request(url, data=payload, headers={"Content-Type": "application/json"})
         with urlopen(req, timeout=15) as resp:
-            data = json.loads(resp.read().decode())
-            token = data.get("access_token")
-            if not token:
-                logger.error("Respuesta del CRM no contiene access_token")
-                return None
-            return token
+            resp.read().decode()  # drain body
+
+            # CRM es Next.js + Supabase SSR — usa cookie de sesión, no Bearer token
+            set_cookie = resp.getheader("set-cookie", "")
+            for part in set_cookie.split(","):
+                if "sb-" in part:
+                    return part.split(";")[0]
+
+            logger.error("No se encontró cookie de sesión Supabase")
+            return None
     except HTTPError as e:
         body = e.read().decode()
         try:
@@ -66,11 +71,17 @@ def _crm_authenticate() -> str | None:
         return None
 
 
-def _crm_send_lead(token: str, lead: dict) -> tuple[bool, str]:
-    """Send a single lead to the CRM. Returns (success, message)."""
+def _crm_send_lead(cookie: str, lead: dict) -> tuple[bool, str]:
+    """Send a single lead to the CRM using Supabase session cookie. Returns (success, message)."""
+    email = lead.get("email") or ""
+    if not email or "@" not in email:
+        import re
+        name = lead.get("business_name") or lead.get("empresa") or "lead"
+        email = re.sub(r"[^a-z0-9]", "", name.lower()) + "@sin-email.lead"
+
     payload = {
         "empresa": lead.get("business_name") or lead.get("empresa") or "",
-        "email": lead.get("email") or "",
+        "email": email,
         "origen": "Lead Extractor - Google Maps",
         "nombre": lead.get("contact_person") or lead.get("nombre") or lead.get("business_name") or "",
         "telefono": lead.get("phone") or lead.get("telefono") or "",
@@ -89,7 +100,7 @@ def _crm_send_lead(token: str, lead: dict) -> tuple[bool, str]:
         data=data,
         headers={
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {token}",
+            "Cookie": cookie,
         },
     )
 
@@ -119,8 +130,8 @@ def crm_send_batch(csv_path: str):
         sys.exit(1)
 
     logger.info("Autenticando con CRM...")
-    token = _crm_authenticate()
-    if not token:
+    cookie = _crm_authenticate()
+    if not cookie:
         sys.exit(1)
 
     print(f"\n{'='*50}")
@@ -131,7 +142,7 @@ def crm_send_batch(csv_path: str):
     errors = 0
     for i, lead in enumerate(leads, 1):
         name = lead.get("business_name", "Desconocido")
-        ok, msg = _crm_send_lead(token, lead)
+        ok, msg = _crm_send_lead(cookie, lead)
         if ok:
             success += 1
             print(f"  ✓ [{i}/{len(leads)}] {name} → CRM (id: {msg})")

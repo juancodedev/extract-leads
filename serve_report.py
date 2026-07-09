@@ -25,34 +25,52 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
+# ── Cargar .env.local ──
+try:
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(os.path.dirname(__file__) or ".", ".env.local"))
+    load_dotenv(os.path.join(os.path.dirname(__file__) or ".", ".env"))
+except ImportError:
+    pass
+
 # ── Config ──
 CRM_API_URL = os.environ.get("CRM_API_URL", "https://crm.juancode.dev")
 CRM_EMAIL = os.environ.get("CRM_API_EMAIL", "")
 CRM_PASSWORD = os.environ.get("CRM_API_PASSWORD", "")
 
-TOKEN = None  # Will be set after auth
+CRM_COOKIE: str | None = None  # Supabase session cookie (set after auth)
 
 
 # ── CRM Auth ──
 def authenticate() -> str | None:
-    """Authenticate with the CRM and return a JWT token."""
+    """
+    Authenticate with the CRM and return the Supabase session cookie.
+    
+    The CRM is a Next.js app with Supabase SSR — API routes read the session
+    from the sb-*-auth-token cookie, NOT from the Authorization header.
+    """
     if not CRM_EMAIL or not CRM_PASSWORD:
         print("✗ CRM_API_EMAIL y CRM_API_PASSWORD no están configuradas en .env.local")
         return None
 
     url = f"{CRM_API_URL}/api/auth/login"
     payload = json.dumps({"email": CRM_EMAIL, "password": CRM_PASSWORD}).encode()
-    req = Request(url, data=payload, headers={"Content-Type": "application/json"})
 
     try:
+        req = Request(url, data=payload, headers={"Content-Type": "application/json"})
         with urlopen(req, timeout=15) as resp:
-            data = json.loads(resp.read().decode())
-            token = data.get("access_token")
-            if not token:
-                print("✗ Respuesta del CRM no contiene access_token")
-                return None
-            print(f"✓ Autenticado en CRM como {CRM_EMAIL}")
-            return token
+            resp.read().decode()  # drain body
+
+            # Extract the Supabase session cookie
+            set_cookie = resp.getheader("set-cookie", "")
+            for part in set_cookie.split(","):
+                if "sb-" in part:
+                    cookie = part.split(";")[0]
+                    print(f"✓ Autenticado en CRM como {CRM_EMAIL}")
+                    return cookie
+
+            print("✗ No se encontró cookie de sesión Supabase en la respuesta")
+            return None
     except HTTPError as e:
         body = e.read().decode()
         try:
@@ -78,9 +96,9 @@ class ReportHandler(SimpleHTTPRequestHandler):
             self.send_error(404, "Ruta no encontrada")
 
     def _handle_send_lead(self):
-        global TOKEN
+        global CRM_COOKIE
 
-        if not TOKEN:
+        if not CRM_COOKIE:
             self._json_response(401, {"error": "No autenticado. Revisa CRM_API_EMAIL y CRM_API_PASSWORD"})
             return
 
@@ -96,7 +114,7 @@ class ReportHandler(SimpleHTTPRequestHandler):
             self._json_response(400, {"error": "JSON inválido"})
             return
 
-        # Forward to CRM
+        # Forward to CRM using Supabase session cookie (not Bearer token)
         crm_url = f"{CRM_API_URL}/api/leads"
         payload = json.dumps(body).encode()
         req = Request(
@@ -104,7 +122,7 @@ class ReportHandler(SimpleHTTPRequestHandler):
             data=payload,
             headers={
                 "Content-Type": "application/json",
-                "Authorization": f"Bearer {TOKEN}",
+                "Cookie": CRM_COOKIE,
             },
         )
 
@@ -165,9 +183,9 @@ def main():
         sys.exit(1)
 
     # Auth with CRM
-    global TOKEN
-    TOKEN = authenticate()
-    if not TOKEN:
+    global CRM_COOKIE
+    CRM_COOKIE = authenticate()
+    if not CRM_COOKIE:
         print("⚠ El reporte se servirá sin integración CRM")
         print("  Los botones 'Enviar al CRM' mostrarán error hasta que configures las credenciales.")
 
@@ -179,7 +197,7 @@ def main():
     print(f"  Reporte de Leads")
     print(f"  Servidor: http://localhost:{args.port}")
     print(f"  Archivo: {os.path.basename(report_path)}")
-    print(f"  CRM: {'✓ Conectado' if TOKEN else '✗ No configurado'}")
+    print(f"  CRM: {'✓ Conectado' if CRM_COOKIE else '✗ No configurado'}")
     print(f"{'='*50}\n")
     print("Presiona Ctrl+C para detener el servidor\n")
 
