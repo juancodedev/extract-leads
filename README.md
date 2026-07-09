@@ -13,6 +13,8 @@ Motor de prospección inteligente y auditoría digital. Busca, enriquece, califi
 - **Auditoría SEO técnica** — Title, meta description, OG tags, H1, canonical, schema.org, imágenes, lazy loading, viewport, gzip, CMS detection.
 - **Detección de sistemas de reserva** — 21 plataformas: AgendaPro, Calendly, Setmore, SimplyBook, Acuity y más.
 - **Reportes HTML** — Dashboards con Jinja2 + Material Icons: top oportunidades, tabla interactiva, badges de auditoría, scripts de contacto.
+- **Integración con CRM** — Botón "Enviar al CRM" en cada lead del reporte HTML. Envío batch desde CLI. Servidor local proxy para evitar CORS.
+- **Reporte responsivo** — En desktop tabla completa; en mobile cada lead se convierte en card vertical con label + valor.
 - **Barra de progreso** — `tqdm` en pipeline de extracción y auditoría.
 - **Modo interactivo** — Menú guiado que construye la configuración sin tocar YAML.
 
@@ -39,7 +41,12 @@ Crear `.env.local` (no se commitea):
 
 ```env
 GOOGLE_PLACES_API_KEY="tu_key"
-HUNTER_API_KEY="tu_key"  # opcional
+HUNTER_API_KEY="tu_key"       # opcional
+
+# CRM (opcional — para enviar leads)
+CRM_API_URL="https://crm.juancode.dev"
+CRM_API_EMAIL="tu@email.com"
+CRM_API_PASSWORD="tu-contraseña"
 ```
 
 ## Uso
@@ -75,6 +82,12 @@ python cli.py --from-csv leads.csv --html reporte.html
 
 # Auditar websites desde CSV
 python cli.py --from-csv leads.csv --audit auditoria.html
+
+# Servir reporte HTML con botones CRM (abre navegador en localhost:8765)
+python cli.py --serve leads_output/reporte.html
+
+# Enviar leads en batch al CRM desde un CSV
+python cli.py --crm-send leads_output/leads.csv
 ```
 
 ### Opciones completas
@@ -95,6 +108,8 @@ python cli.py --from-csv leads.csv --audit auditoria.html
   --audit FILE        Auditar websites desde CSV → HTML
   --html FILE         Generar reporte HTML desde CSV existente
   --from-csv FILE     CSV de entrada para --html o --audit
+  --crm-send FILE     Enviar leads en batch al CRM desde CSV
+  --serve [FILE]      Servir reporte HTML con proxy CRM (usa el más reciente si no se pasa ruta)
 ```
 
 ## Objetivos de scoring (`--goal`)
@@ -181,6 +196,56 @@ enrichment:
 - Tabla completa con Material Icons clickeables (teléfono, WhatsApp, web, Instagram, Facebook).
 - Badges de auditoría (SEO Auditado, Meta Ads Ready, IG-to-Web Ready).
 
+## Integración con CRM
+
+El proyecto puede enviar leads directamente a un CRM compatible (endpoint REST) desde el reporte HTML o desde la línea de comandos.
+
+### Cómo funciona
+
+1. Configurás `CRM_API_URL`, `CRM_API_EMAIL` y `CRM_API_PASSWORD` en `.env.local`
+2. Al generar el reporte HTML, cada lead incluye un botón **"Enviar al CRM"**
+3. El botón funciona a través de `serve_report.py` — un servidor local que:
+   - Se autentica con tu CRM al iniciar (obtiene un JWT)
+   - Sirve el reporte HTML en `http://localhost:8765`
+   - Hace de proxy: el botón JS llama a tu localhost, el servidor reenvía al CRM con el token
+   - **Soluciona el problema de CORS** — el navegador nunca toca el CRM directamente
+
+### Mapeo de campos
+
+| CSV / Lead         | CRM API       |
+|--------------------|---------------|
+| `business_name`    | `empresa`     |
+| `email`            | `email`       |
+| `source`           | `origen`      |
+| `contact_person`   | `nombre`      |
+| `phone`            | `telefono`    |
+| `scoring_notes`    | `notas`       |
+| `date_found`       | `fecha_captura` |
+| *(fijo)*           | `status: "Nuevo"` |
+
+### Botón desde el reporte HTML
+
+```bash
+# Con credenciales CRM en .env.local:
+python cli.py --serve
+# O directamente:
+python serve_report.py leads_output/mi_reporte.html
+```
+
+Se abre el navegador en `http://localhost:8765`. Cada lead tiene un botón que lo envía al CRM con un solo click. Feedback visual: spinner → ✓ Enviado → ✗ Error (con restauración automática).
+
+### Envío batch desde CLI
+
+```bash
+python cli.py --crm-send leads_output/leads.csv
+```
+
+Autentica, recorre todos los leads, los envía y muestra un resumen de cuántos se enviaron correctamente y cuáles fallaron.
+
+### Sin credenciales CRM
+
+Si no configurás las variables de CRM, el reporte HTML se genera sin los botones — el resto de la funcionalidad no se ve afectada.
+
 ### HTML Auditoría
 
 Scorecards por sitio con: technical score (0-100), response time, SSL, sistema de reservas, imágenes, mobile-friendly, CMS detectado, canales de contacto, SEO title y checklist de mejoras priorizadas por severidad.
@@ -196,6 +261,7 @@ extract-leads/
 ├── lead_scorer.py          # Scoring engine con flags de oportunidad
 ├── analyzer.py             # Website analyzer (SEO, imágenes, contacto)
 ├── reporters.py            # Reportes HTML (Jinja2) + resúmenes
+├── serve_report.py         # Servidor local con proxy al CRM (soluciona CORS)
 ├── config_loader.py        # Carga de YAML con defaults y fallbacks
 ├── exporters.py            # CSV export/import
 ├── booking_data.py         # 21 sistemas de reserva + skip list

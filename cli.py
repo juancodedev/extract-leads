@@ -4,10 +4,13 @@ CLI entry point for the Lead Extractor pipeline.
 
 import argparse
 import asyncio
+import json
 import logging
 import os
 import sys
 from datetime import datetime
+from urllib.request import Request, urlopen
+from urllib.error import HTTPError, URLError
 
 import yaml
 from dotenv import load_dotenv
@@ -23,6 +26,122 @@ from pipeline import run_pipeline  # noqa: E402
 from reporters import export_html, print_summary  # noqa: E402
 
 logger = logging.getLogger(__name__)
+
+# ── CRM Helpers ──
+
+CRM_API_URL = os.environ.get("CRM_API_URL", "https://crm.juancode.dev")
+
+
+def _crm_authenticate() -> str | None:
+    """Authenticate with CRM and return a JWT token."""
+    email = os.environ.get("CRM_API_EMAIL", "")
+    password = os.environ.get("CRM_API_PASSWORD", "")
+    if not email or not password:
+        logger.error("CRM_API_EMAIL y CRM_API_PASSWORD no están configuradas en .env.local")
+        return None
+
+    url = f"{CRM_API_URL}/api/auth/login"
+    payload = json.dumps({"email": email, "password": password}).encode()
+    req = Request(url, data=payload, headers={"Content-Type": "application/json"})
+
+    try:
+        with urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read().decode())
+            token = data.get("access_token")
+            if not token:
+                logger.error("Respuesta del CRM no contiene access_token")
+                return None
+            return token
+    except HTTPError as e:
+        body = e.read().decode()
+        try:
+            detail = json.loads(body)
+            err_msg = detail.get("error", detail.get("detail", body))
+        except json.JSONDecodeError:
+            err_msg = body
+        logger.error("Error CRM auth (%s): %s", e.code, err_msg)
+        return None
+    except URLError as e:
+        logger.error("No se pudo conectar al CRM: %s", e.reason)
+        return None
+
+
+def _crm_send_lead(token: str, lead: dict) -> tuple[bool, str]:
+    """Send a single lead to the CRM. Returns (success, message)."""
+    payload = {
+        "empresa": lead.get("business_name") or lead.get("empresa") or "",
+        "email": lead.get("email") or "",
+        "origen": "Lead Extractor - Google Maps",
+        "nombre": lead.get("contact_person") or lead.get("nombre") or lead.get("business_name") or "",
+        "telefono": lead.get("phone") or lead.get("telefono") or "",
+        "notas": (
+            f"Lead Score: {lead.get('lead_score', 'N/A')} | "
+            f"Industria: {lead.get('industry', 'N/A')} | "
+            f"Ciudad: {lead.get('city', 'N/A')}"
+        ),
+        "status": "Nuevo",
+    }
+
+    url = f"{CRM_API_URL}/api/leads"
+    data = json.dumps(payload).encode()
+    req = Request(
+        url,
+        data=data,
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {token}",
+        },
+    )
+
+    try:
+        with urlopen(req, timeout=15) as resp:
+            result = json.loads(resp.read().decode())
+            return True, result.get("id", "ok")
+    except HTTPError as e:
+        body = e.read().decode()
+        try:
+            detail = json.loads(body)
+            err_msg = detail.get("error", detail.get("detail", body))
+        except json.JSONDecodeError:
+            err_msg = body
+        return False, f"HTTP {e.code}: {err_msg}"
+    except URLError as e:
+        return False, f"Error conexión: {e.reason}"
+
+
+def crm_send_batch(csv_path: str):
+    """Send all leads from a CSV to the CRM."""
+    from exporters import load_leads_from_csv
+
+    leads = load_leads_from_csv(csv_path)
+    if not leads:
+        logger.error("No se encontraron leads en %s", csv_path)
+        sys.exit(1)
+
+    logger.info("Autenticando con CRM...")
+    token = _crm_authenticate()
+    if not token:
+        sys.exit(1)
+
+    print(f"\n{'='*50}")
+    print(f"  Enviando {len(leads)} leads al CRM...")
+    print(f"{'='*50}\n")
+
+    success = 0
+    errors = 0
+    for i, lead in enumerate(leads, 1):
+        name = lead.get("business_name", "Desconocido")
+        ok, msg = _crm_send_lead(token, lead)
+        if ok:
+            success += 1
+            print(f"  ✓ [{i}/{len(leads)}] {name} → CRM (id: {msg})")
+        else:
+            errors += 1
+            print(f"  ✗ [{i}/{len(leads)}] {name} → {msg}")
+
+    print(f"\n{'='*50}")
+    print(f"  Resultado: {success} enviados, {errors} errores")
+    print(f"{'='*50}")
 
 
 def _print_dry_run(config, args):
@@ -148,7 +267,35 @@ async def main():
         action="store_true",
         help="Show what would be searched without making API calls",
     )
+    parser.add_argument(
+        "--crm-send",
+        metavar="CSV",
+        help="Send leads from a CSV file to the CRM in batch",
+    )
+    parser.add_argument(
+        "--serve",
+        nargs="?",
+        const="auto",
+        metavar="HTML",
+        help="Serve a report HTML with CRM integration (uses latest if no path given)",
+    )
     args = parser.parse_args()
+
+    # CRM send mode (batch)
+    if args.crm_send:
+        crm_send_batch(args.crm_send)
+        return
+
+    # Serve mode
+    if args.serve is not None:
+        import subprocess
+        serve_script = os.path.join(os.path.dirname(__file__), "serve_report.py")
+        cmd = [sys.executable, serve_script]
+        if args.serve != "auto":
+            cmd.append(args.serve)
+        logger.info("Iniciando servidor del reporte...")
+        subprocess.run(cmd)
+        return
 
     # Audit mode
     if args.audit:

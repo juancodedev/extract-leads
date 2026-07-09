@@ -3,6 +3,7 @@ Summary and HTML report generation for lead data.
 """
 
 import html as html_lib
+import json
 import logging
 import os
 import re
@@ -97,6 +98,12 @@ def export_html(leads: list[dict], output_path: str):
         "COLD": "rgba(107,114,128,0.1)",
     }
 
+    # CRM config
+    crm_api_url = os.environ.get("CRM_API_URL", "")
+    crm_email = os.environ.get("CRM_API_EMAIL", "")
+    crm_password = os.environ.get("CRM_API_PASSWORD", "")
+    crm_enabled = bool(crm_api_url and crm_email and crm_password)
+
     rows = []
     for i, lead in enumerate(leads, 1):
         tier = lead.get("lead_tier", "COLD")
@@ -138,6 +145,7 @@ def export_html(leads: list[dict], output_path: str):
         rows.append(
             {
                 "num": i,
+                "index": i - 1,
                 "name": str(lead.get("business_name", "") or ""),
                 "industry": str(lead.get("industry", "") or ""),
                 "city": str(lead.get("city", "") or ""),
@@ -167,7 +175,7 @@ def export_html(leads: list[dict], output_path: str):
     # Top Opportunities section (Inspired by kit-prospeccion)
     top_leads = leads[:5]
     top_opportunities = []
-    for lead in top_leads:
+    for lead_idx, lead in enumerate(leads[:5]):
         raw_name = str(lead.get("business_name", ""))
         score = lead.get("lead_score", 0)
         notes = lead.get("scoring_notes", "No notes")
@@ -194,6 +202,7 @@ def export_html(leads: list[dict], output_path: str):
 
         top_opportunities.append(
             {
+                "index": lead_idx,
                 "name": raw_name,
                 "industry": str(lead.get("industry", "Unknown")),
                 "city": str(lead.get("city", "")),
@@ -209,6 +218,23 @@ def export_html(leads: list[dict], output_path: str):
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
 
+    # Build lightweight JSON for CRM button (only fields the CRM needs)
+    leads_json = json.dumps([
+        {
+            "business_name": lead.get("business_name", ""),
+            "email": lead.get("email", ""),
+            "phone": lead.get("phone", ""),
+            "contact_person": lead.get("contact_person", ""),
+            "industry": lead.get("industry", ""),
+            "city": lead.get("city", ""),
+            "lead_score": lead.get("lead_score", 0),
+            "lead_tier": lead.get("lead_tier", "COLD"),
+            "scoring_notes": lead.get("scoring_notes", ""),
+            "website": lead.get("website", ""),
+        }
+        for lead in leads
+    ], ensure_ascii=False)
+
     template = jinja_env.get_template("lead_report.html")
     html = template.render(
         total=total,
@@ -222,6 +248,9 @@ def export_html(leads: list[dict], output_path: str):
         industries=industries,
         rows=rows,
         top_opportunities=top_opportunities,
+        leads_json=leads_json,
+        crm_enabled=crm_enabled,
+        crm_server_url=crm_api_url,
     )
 
     out_dir = os.path.dirname(output_path)

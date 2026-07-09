@@ -1,38 +1,104 @@
 {% extends "base.html" %}
 
 {% block extra_css %}
-.stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin-bottom:28px; }
-.stat { background:#fff; border-radius:12px; padding:14px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.06); }
-.stat-value { font-size:30px; font-weight:700; }
-.stat-label { font-size:12px; color:#64748b; margin-top:2px; }
-.cards { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:28px; }
-@media (max-width:768px) { .cards { grid-template-columns:1fr; } }
-.card h3 { font-size:15px; font-weight:600; margin-bottom:12px; color:#475569; }
-.ind-bar { display:flex; align-items:center; gap:10px; margin-bottom:7px; }
-.ind-name { font-size:13px; width:180px; flex-shrink:0; }
+/* ── Stats ── */
+.stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; margin-bottom:24px; }
+.stat { background:#fff; border-radius:12px; padding:14px 10px; text-align:center; box-shadow:0 1px 2px rgba(0,0,0,0.05); }
+.stat-value { font-size:28px; font-weight:700; letter-spacing:-0.02em; }
+@media (min-width:640px) { .stat-value { font-size:30px; } }
+.stat-label { font-size:11px; color:#64748b; margin-top:2px; }
+
+/* ── Ranking Legend ── */
+.ranking-legend { background:#fff; border-radius:12px; padding:20px; margin-bottom:24px; box-shadow:0 1px 2px rgba(0,0,0,0.05); border-left:4px solid #3b82f6; }
+.ranking-legend h3 { font-size:15px; margin-bottom:8px; color:#1e293b; }
+.ranking-legend p { font-size:13px; color:#64748b; line-height:1.5; margin-bottom:12px; }
+.tier-legend { display:flex; gap:10px; flex-wrap:wrap; }
+.tier-item { display:flex; align-items:center; gap:6px; font-size:12px; }
+
+/* ── Cards (industrias + tiers) ── */
+.cards { display:grid; grid-template-columns:1fr; gap:16px; margin-bottom:24px; }
+@media (min-width:640px) { .cards { grid-template-columns:1fr 1fr; } }
+.cards .card h3 { font-size:14px; font-weight:600; margin-bottom:12px; color:#475569; }
+.ind-bar { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+.ind-name { font-size:12px; min-width:120px; flex-shrink:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+@media (min-width:640px) { .ind-name { min-width:160px; } }
 .ind-track { flex:1; height:8px; background:#f1f5f9; border-radius:4px; overflow:hidden; }
 .ind-fill { height:100%; background:#3b82f6; border-radius:4px; transition:width 0.4s; }
-.ind-count { font-size:13px; color:#64748b; width:30px; text-align:right; }
-.table-wrap { background:#fff; border-radius:12px; overflow-x:auto; box-shadow:0 1px 3px rgba(0,0,0,0.06); }
-table { width:100%; border-collapse:collapse; font-size:13px; min-width:900px; }
-th { background:#f8fafc; text-align:left; padding:10px 8px; font-weight:600; color:#475569; border-bottom:2px solid #e2e8f0; white-space:nowrap; }
+.ind-count { font-size:12px; color:#64748b; min-width:24px; text-align:right; }
+
+/* ── Top Opportunities ── */
+.section-title { font-size:18px; font-weight:700; margin-bottom:16px; color:#1e293b; display:flex; align-items:center; gap:8px; }
+.opportunity-grid { display:grid; grid-template-columns:1fr; gap:14px; margin-bottom:24px; }
+@media (min-width:640px) { .opportunity-grid { grid-template-columns:repeat(2,1fr); } }
+@media (min-width:1024px) { .opportunity-grid { grid-template-columns:repeat(3,1fr); } }
+.opportunity-card {
+  background:#fff; border-radius:12px; padding:18px; box-shadow:0 1px 2px rgba(0,0,0,0.05);
+  border:1px solid #e2e8f0; transition:box-shadow 0.2s;
+}
+.opportunity-card:hover { box-shadow:0 4px 12px rgba(0,0,0,0.08); }
+.opp-header { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:8px; }
+.opp-name { font-size:15px; font-weight:600; margin-bottom:2px; }
+.opp-meta { font-size:11px; color:#64748b; margin-bottom:6px; }
+.opp-notes { font-size:12px; margin-bottom:10px; padding:10px; background:#f8fafc; border-radius:6px; border-left:3px solid #3b82f6; color:#475569; line-height:1.5; }
+.opp-msg { background:#f1f5f9; padding:10px; border-radius:6px; font-size:11px; font-style:italic; color:#475569; line-height:1.5; margin-bottom:10px; }
+.opp-actions { display:flex; gap:8px; flex-wrap:wrap; }
+
+/* ── Table ── */
+.table-wrap { background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 1px 2px rgba(0,0,0,0.05); }
+.table-scroll { overflow-x:auto; }
+table { width:100%; border-collapse:collapse; font-size:13px; }
+thead { background:#f8fafc; }
+th { text-align:left; padding:10px 8px; font-weight:600; color:#475569; border-bottom:2px solid #e2e8f0; white-space:nowrap; font-size:12px; }
 td { padding:9px 8px; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
-tr:hover { background:#fafafa; }
+tbody tr:hover { background:#fafafa; }
 .num { text-align:center; }
 .contacts { white-space:nowrap; }
-a.contact-badge { text-decoration:none; margin-right:6px; cursor:pointer; opacity:0.8; transition:all 0.15s; display:inline-flex; align-items:center; vertical-align:middle; }
-a.contact-badge:hover { opacity:1; transform:scale(1.2); }
-.material-icons { font-size: 20px; }
+a.contact-badge { text-decoration:none; margin-right:4px; cursor:pointer; opacity:0.75; transition:all 0.15s; display:inline-flex; align-items:center; vertical-align:middle; }
+a.contact-badge:hover { opacity:1; transform:scale(1.15); }
 .booking-badge { text-decoration:none; cursor:pointer; opacity:0.7; display:inline-flex; align-items:center; vertical-align:middle; }
-.booking-badge:hover { opacity:1; transform:scale(1.2); }
-.tier { display:inline-block; padding:2px 10px; border-radius:12px; font-size:11px; font-weight:600; }
-.opportunity-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(350px,1fr)); gap:16px; margin-bottom:28px; }
-.opportunity-card { background:#fff; border-radius:12px; padding:20px; box-shadow:0 1px 3px rgba(0,0,0,0.06); border:1px solid #e2e8f0; }
-.ranking-legend { background:#fff; border-radius:12px; padding:20px; margin-bottom:28px; box-shadow:0 1px 3px rgba(0,0,0,0.06); border-left:4px solid #3b82f6; }
-.ranking-legend h3 { font-size:16px; margin-bottom:10px; color:#1e293b; }
-.ranking-legend p { font-size:13px; color:#64748b; line-height:1.5; margin-bottom:12px; }
-.tier-legend { display:flex; gap:12px; flex-wrap:wrap; }
-.tier-item { display:flex; align-items:center; gap:6px; font-size:12px; }
+.booking-badge:hover { opacity:1; transform:scale(1.15); }
+.tier { display:inline-block; padding:2px 10px; border-radius:12px; font-size:11px; font-weight:600; white-space:nowrap; }
+.name-cell { font-weight:600; }
+
+/* ── CRM Button ── */
+.btn-crm {
+  display:inline-flex; align-items:center; gap:4px;
+  padding:5px 12px; border-radius:8px; font-size:12px; font-weight:600;
+  border:1px solid #3b82f6; background:#eff6ff; color:#3b82f6;
+  cursor:pointer; transition:all 0.2s; white-space:nowrap;
+}
+.btn-crm:hover:not(:disabled) { background:#3b82f6; color:#fff; }
+.btn-crm:disabled { opacity:0.5; cursor:wait; }
+.btn-crm.sent { background:#ecfdf5; border-color:#10b981; color:#065f46; cursor:default; }
+.btn-crm.error { background:#fef2f2; border-color:#ef4444; color:#991b1b; }
+.btn-crm svg { width:16px; height:16px; flex-shrink:0; }
+
+/* ── Responsive: table → cards on mobile ── */
+@media (max-width:767px) {
+  .table-scroll { overflow-x:visible; }
+  table, thead, tbody, tr, th, td { display:block; }
+  thead { display:none; }
+  tr {
+    padding:0; margin-bottom:14px; border:1px solid #e2e8f0; border-radius:12px;
+    box-shadow:0 1px 2px rgba(0,0,0,0.05); background:#fff;
+  }
+  td {
+    display:flex; justify-content:space-between; align-items:center;
+    padding:9px 14px; border-bottom:1px solid #f1f5f9; font-size:13px;
+  }
+  td:last-child { border-bottom:none; }
+  td::before {
+    content:attr(data-label);
+    font-weight:600; color:#64748b; font-size:12px;
+    margin-right:12px; flex-shrink:0;
+  }
+  td.num { justify-content:space-between; }
+  .contacts { white-space:normal; }
+}
+
+/* ── Spinner ── */
+.crm-spinner { animation:spin 0.8s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
 {% endblock %}
 
 {% block extra_head %}
@@ -40,36 +106,23 @@ a.contact-badge:hover { opacity:1; transform:scale(1.2); }
 {% endblock %}
 
 {% block header_content %}
-<h1 style="display:flex; align-items:center; gap:10px;"><span class="material-icons" style="font-size:32px; color:#3b82f6;">analytics</span> Lead Report</h1>
-<p>{{ total }} leads extraídos • {{ now }} • {{ phones }} con teléfono • {{ websites }} con web • {{ with_wa }} WhatsApp • {{ with_booking }} con reservas • {{ "%.1f"|format(avg_rating) }} rating promedio</p>
+<h1 style="display:flex; align-items:center; gap:10px;">
+  <span class="material-icons" style="font-size:28px; color:#3b82f6;">analytics</span>
+  Lead Report
+</h1>
+<p>{{ total }} leads extraídos &bull; {{ now }} &bull; {{ phones }} con teléfono &bull; {{ websites }} con web &bull; {{ with_wa }} WhatsApp &bull; {{ with_booking }} con reservas &bull; {{ "%.1f"|format(avg_rating) }} rating promedio</p>
 {% endblock %}
 
 {% block content %}
+
+<!-- Stats -->
 <div class="stats-grid">
-  <div class="stat">
-    <div class="stat-value">{{ total }}</div>
-    <div class="stat-label">Total leads</div>
-  </div>
-  <div class="stat">
-    <div class="stat-value" style="color:#22c55e">{{ phones }}</div>
-    <div class="stat-label">Con teléfono</div>
-  </div>
-  <div class="stat">
-    <div class="stat-value" style="color:#25D366">{{ with_wa }}</div>
-    <div class="stat-label">WhatsApp</div>
-  </div>
-  <div class="stat">
-    <div class="stat-value" style="color:#3b82f6">{{ websites }}</div>
-    <div class="stat-label">Con web</div>
-  </div>
-  <div class="stat">
-    <div class="stat-value" style="color:#8b5cf6">{{ with_booking }}</div>
-    <div class="stat-label">Sistema reservas</div>
-  </div>
-  <div class="stat">
-    <div class="stat-value" style="color:#f59e0b">{{ "%.1f"|format(avg_rating) }}</div>
-    <div class="stat-label">Rating promedio</div>
-  </div>
+  <div class="stat"><div class="stat-value">{{ total }}</div><div class="stat-label">Total leads</div></div>
+  <div class="stat"><div class="stat-value" style="color:#22c55e">{{ phones }}</div><div class="stat-label">Con teléfono</div></div>
+  <div class="stat"><div class="stat-value" style="color:#25D366">{{ with_wa }}</div><div class="stat-label">WhatsApp</div></div>
+  <div class="stat"><div class="stat-value" style="color:#3b82f6">{{ websites }}</div><div class="stat-label">Con web</div></div>
+  <div class="stat"><div class="stat-value" style="color:#8b5cf6">{{ with_booking }}</div><div class="stat-label">Sistema reservas</div></div>
+  <div class="stat"><div class="stat-value" style="color:#f59e0b">{{ "%.1f"|format(avg_rating) }}</div><div class="stat-label">Rating promedio</div></div>
   {% for tier in tiers %}
   <div class="stat">
     <div class="stat-value" style="color:{{ tier.color }}">{{ tier.count }}</div>
@@ -78,47 +131,57 @@ a.contact-badge:hover { opacity:1; transform:scale(1.2); }
   {% endfor %}
 </div>
 
+<!-- Ranking Legend -->
 <div class="ranking-legend">
   <h3>¿Qué significa el Ranking?</h3>
   <p>El <strong>Lead Score</strong> (0-100) mide el potencial de conversión y la necesidad de servicios digitales. Se calcula analizando la presencia de sitio web, redes sociales activas, canales de contacto, ubicación premium y deficiencias técnicas que representan una oportunidad de venta.</p>
   <div class="tier-legend">
-    <div class="tier-item"><span class="tier" style="background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid #ef4444">HOT (80-100)</span> <span>Alta prioridad: Necesidad crítica o encaje perfecto.</span></div>
-    <div class="tier-item"><span class="tier" style="background:rgba(245,158,11,0.1);color:#f59e0b;border:1px solid #f59e0b">WARM (60-79)</span> <span>Interés alto: Buen prospecto con margen de mejora.</span></div>
-    <div class="tier-item"><span class="tier" style="background:rgba(59,130,246,0.1);color:#3b82f6;border:1px solid #3b82f6">COOL (40-59)</span> <span>Interés medio: Requiere más trabajo de educación.</span></div>
-    <div class="tier-item"><span class="tier" style="background:rgba(107,114,128,0.1);color:#6b7280;border:1px solid #6b7280">COLD (0-39)</span> <span>Baja prioridad: Poco encaje o ya bien servido.</span></div>
+    <div class="tier-item"><span class="tier" style="background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid #ef4444">HOT (80-100)</span> <span>Alta prioridad</span></div>
+    <div class="tier-item"><span class="tier" style="background:rgba(245,158,11,0.1);color:#f59e0b;border:1px solid #f59e0b">WARM (60-79)</span> <span>Interés alto</span></div>
+    <div class="tier-item"><span class="tier" style="background:rgba(59,130,246,0.1);color:#3b82f6;border:1px solid #3b82f6">COOL (40-59)</span> <span>Interés medio</span></div>
+    <div class="tier-item"><span class="tier" style="background:rgba(107,114,128,0.1);color:#6b7280;border:1px solid #6b7280">COLD (0-39)</span> <span>Baja prioridad</span></div>
   </div>
 </div>
 
-<h3 style="margin-bottom:16px; font-size:18px;">🔥 Top 5 Oportunidades</h3>
+<!-- Lead Data (embedded JSON for JS) -->
+<script id="leads-data" type="application/json">{{ leads_json|safe }}</script>
+
+<!-- Top Opportunities -->
+<div class="section-title">🔥 Top {{ top_opportunities|length }} Oportunidades</div>
 <div class="opportunity-grid">
   {% for opp in top_opportunities %}
   <div class="opportunity-card">
-    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+    <div class="opp-header">
       <div>
-        <h4 style="font-size:16px; margin-bottom:4px;">{{ opp.name }}</h4>
-        <div style="font-size:12px; color:#64748b; margin-bottom:8px;">{{ opp.industry }} &bull; {{ opp.city }}</div>
-        <div style="margin-bottom:8px;">{{ opp.audit_badges|safe }}</div>
+        <div class="opp-name">{{ opp.name }}</div>
+        <div class="opp-meta">{{ opp.industry }} &bull; {{ opp.city }}</div>
+        <div style="margin-top:4px;">{{ opp.audit_badges|safe }}</div>
       </div>
-      <div class="tier" style="background:{{ opp.tier_bg }};color:{{ opp.tier_color }}">
+      <div class="tier" style="background:{{ opp.tier_bg }};color:{{ opp.tier_color }};border:1px solid {{ opp.tier_color }};flex-shrink:0;">
         Score: {{ opp.score }}
       </div>
     </div>
-    <div style="font-size:13px; margin-bottom:12px; padding:8px; background:#f8fafc; border-radius:6px; border-left:4px solid #3b82f6;">
-      <strong>Análisis:</strong> {{ opp.notes }}
-    </div>
-    <div style="background:#f1f5f9; padding:10px; border-radius:6px; font-size:12px; font-style:italic;">
-      <strong>Sugerencia de contacto:</strong> "{{ opp.suggested_msg }}"
+    <div class="opp-notes"><strong>Análisis:</strong> {{ opp.notes }}</div>
+    <div class="opp-msg"><strong>Sugerencia:</strong> "{{ opp.suggested_msg }}"</div>
+    <div class="opp-actions">
+      {% if crm_enabled %}
+      <button class="btn-crm" data-lead-index="{{ opp.index }}" onclick="sendToCRM(this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Enviar al CRM
+      </button>
+      {% endif %}
     </div>
   </div>
   {% endfor %}
 </div>
 
+<!-- Industry + Tier Cards -->
 <div class="cards">
   <div class="card">
     <h3>Por industria</h3>
     {% for ind in industries %}
     <div class="ind-bar">
-      <div class="ind-name">{{ ind.name }}</div>
+      <div class="ind-name" title="{{ ind.name }}">{{ ind.name }}</div>
       <div class="ind-track"><div class="ind-fill" style="width:{{ ind.pct }}%"></div></div>
       <div class="ind-count">{{ ind.count }}</div>
     </div>
@@ -137,40 +200,136 @@ a.contact-badge:hover { opacity:1; transform:scale(1.2); }
   </div>
 </div>
 
+<!-- Full Leads Table -->
+<div class="section-title" style="margin-top:8px;">📋 Todos los leads</div>
 <div class="table-wrap">
-  <table>
-    <thead>
-      <tr>
-        <th class="num">#</th>
-        <th>Negocio</th>
-        <th>Industria</th>
-        <th>Ciudad</th>
-        <th>Contacto</th>
-        <th class="num"><span class="material-icons" style="font-size:18px;">event_available</span></th>
-        <th class="num"><span class="material-icons" style="font-size:18px;">star</span></th>
-        <th class="num">Reviews</th>
-        <th>Tier</th>
-        <th class="num">Score</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for row in rows %}
-      <tr>
-        <td class="num">{{ row.num }}</td>
-        <td><strong>{{ row.name }}</strong></td>
-        <td>{{ row.industry }}</td>
-        <td>{{ row.city }}</td>
-        <td class="contacts">{{ row.contacts_html|safe }}</td>
-        <td class="num">{{ row.booking_badge|safe }}</td>
-        <td class="num">{{ row.rating }}</td>
-        <td class="num">{{ row.reviews }}</td>
-        <td><span class="tier" style="background:{{ row.tier_bg }};color:{{ row.tier_color }};border:1px solid {{ row.tier_color }}">{{ row.tier }}</span></td>
-        <td class="num"><strong>{{ row.score }}</strong></td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th class="num">#</th>
+          <th>Negocio</th>
+          <th>Industria</th>
+          <th>Ciudad</th>
+          <th>Contacto</th>
+          {% if crm_enabled %}<th class="num">CRM</th>{% endif %}
+          <th class="num"><span class="material-icons" style="font-size:16px;vertical-align:middle;">event_available</span></th>
+          <th class="num"><span class="material-icons" style="font-size:16px;vertical-align:middle;">star</span></th>
+          <th class="num">Reviews</th>
+          <th>Tier</th>
+          <th class="num">Score</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td class="num" data-label="#">{{ row.num }}</td>
+          <td data-label="Negocio"><span class="name-cell">{{ row.name }}</span></td>
+          <td data-label="Industria">{{ row.industry }}</td>
+          <td data-label="Ciudad">{{ row.city }}</td>
+          <td data-label="Contacto" class="contacts">{{ row.contacts_html|safe }}</td>
+          {% if crm_enabled %}
+          <td class="num" data-label="CRM">
+            <button class="btn-crm" data-lead-index="{{ row.index }}" onclick="sendToCRM(this)" title="Enviar a CRM">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              CRM
+            </button>
+          </td>
+          {% endif %}
+          <td class="num" data-label="Reservas">{{ row.booking_badge|safe }}</td>
+          <td class="num" data-label="Rating">{{ row.rating }}</td>
+          <td class="num" data-label="Reviews">{{ row.reviews }}</td>
+          <td data-label="Tier"><span class="tier" style="background:{{ row.tier_bg }};color:{{ row.tier_color }};border:1px solid {{ row.tier_color }}">{{ row.tier }}</span></td>
+          <td class="num" data-label="Score"><strong>{{ row.score }}</strong></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
 {% endblock %}
 
-{% block footer_text %}Lead Extractor{% endblock %}
+{% block extra_js %}
+{% if crm_enabled %}
+<script>
+const CRM_API_URL = {{ crm_server_url|default('')|tojson }};
+
+function leadDataByIndex(idx) {
+  const script = document.getElementById('leads-data');
+  if (!script) return null;
+  try {
+    const data = JSON.parse(script.textContent);
+    return data[idx] || null;
+  } catch (e) {
+    console.error('Error parsing leads data:', e);
+    return null;
+  }
+}
+
+async function sendToCRM(btn) {
+  if (btn.disabled) return;
+
+  const idx = parseInt(btn.dataset.leadIndex);
+  const lead = leadDataByIndex(idx);
+  if (!lead) {
+    showNotification('Error: datos del lead no encontrados', 'error');
+    return;
+  }
+
+  // Guardar texto original y deshabilitar
+  const originalHTML = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<svg class="crm-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> Enviando...';
+
+  try {
+    const payload = {
+      empresa: lead.business_name || lead.empresa || '',
+      email: lead.email || '',
+      origen: 'Lead Extractor - Google Maps',
+      nombre: lead.contact_person || lead.nombre || lead.business_name || '',
+      telefono: lead.phone || lead.telefono || '',
+      notas: [
+        'Lead Score: ' + (lead.lead_score !== undefined ? lead.lead_score : 'N/A'),
+        'Industria: ' + (lead.industry || 'N/A'),
+        'Ciudad: ' + (lead.city || 'N/A'),
+        lead.scoring_notes || ''
+      ].filter(Boolean).join(' | '),
+      status: 'Nuevo'
+    };
+
+    const url = CRM_API_URL ? CRM_API_URL + '/api/send-lead' : '/api/send-lead';
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!resp.ok) {
+      let errMsg = 'Error del servidor';
+      try {
+        const err = await resp.json();
+        errMsg = err.error || err.detail || errMsg;
+      } catch (_) {}
+      throw new Error(errMsg);
+    }
+
+    const result = await resp.json();
+    btn.className = 'btn-crm sent';
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><polyline points="20 6 9 17 4 12"/></svg> Enviado ✓';
+    showNotification(lead.business_name + ' enviado al CRM', 'success');
+
+  } catch (err) {
+    btn.className = 'btn-crm error';
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg> Error';
+    showNotification('Error al enviar ' + lead.business_name + ': ' + err.message, 'error');
+    // Restaurar después de 3s
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.className = 'btn-crm';
+      btn.innerHTML = originalHTML;
+    }, 3000);
+  }
+}
+</script>
+{% endif %}
+{% endblock %}
