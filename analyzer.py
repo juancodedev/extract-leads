@@ -96,7 +96,15 @@ class WebsiteAnalyzer:
                     allow_redirects=True,
                 ) as resp,
             ):
-                html = await resp.text()
+                try:
+                    html = await resp.text()
+                except (UnicodeDecodeError, UnicodeError):
+                    raw = await resp.read()
+                    charset = resp.charset or "utf-8"
+                    html = raw.decode(charset, errors="replace")
+                    result["warnings"] = result.get("warnings", [])
+                    result["warnings"].append("encoding_fallback")
+
                 elapsed = int((time.time() - start) * 1000)
 
                 result["status"] = "ok" if resp.status == 200 else "warning"
