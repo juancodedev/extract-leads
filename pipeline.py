@@ -56,23 +56,11 @@ async def run_pipeline(
     goal: str = "general",
     do_seo: bool = False,
     do_ads: bool = False,
-    do_ig_web: bool = False,
-    *,
-    grid: bool = False,
-    grid_radius: int = 1500,
-    grid_overlap: float = 0.2,
-    grid_cell_limit: int = 50,
 ) -> list[dict]:
     """Execute the full extraction pipeline with optional deep audits.
 
     Creates a single aiohttp.ClientSession and injects it into all
     HTTP-consuming modules for connection pooling and DNS caching.
-
-    Args:
-        grid: Use Nearby Search grid instead of Text Search (much more results).
-        grid_radius: Search radius in meters per grid cell.
-        grid_overlap: Fractional overlap between adjacent cells.
-        grid_cell_limit: Max grid cells to search (safety cap).
     """
     connector = aiohttp.TCPConnector(limit=20, ttl_dns_cache=300)
     async with aiohttp.ClientSession(connector=connector) as session:
@@ -87,6 +75,9 @@ async def run_pipeline(
         search_config = config.get("search", {})
         industries = search_config.get("industries", [])
         locations = search_config.get("locations", [])
+
+        grid_radius = config.get("extraction", {}).get("grid_radius", 1500)
+        grid_overlap = config.get("extraction", {}).get("grid_overlap", 0.2)
 
         per_industry_limit = 0
         if limit:
@@ -108,20 +99,12 @@ async def run_pipeline(
                         pbar.set_postfix_str(f"{keyword} @ {loc['city']}")
 
                     try:
-                        if grid:
-                            # Grid-based Nearby Search (much more coverage)
-                            results = await extractor.search_with_grid(
-                                keyword,
-                                f"{loc['city']}, {loc['region']}",
-                                radius_m=grid_radius,
-                                overlap=grid_overlap,
-                                cell_limit=grid_cell_limit,
-                            )
-                        else:
-                            # Standard Text Search
-                            results = await extractor.search_businesses(
-                                keyword, f"{loc['city']}, {loc['region']}"
-                            )
+                        results = await extractor.search_with_grid(
+                            keyword,
+                            f"{loc['city']}, {loc['region']}",
+                            radius_m=grid_radius,
+                            overlap=grid_overlap,
+                        )
                     except Exception as e:
                         logger.error("Search failed: %s", e)
                         continue
@@ -198,7 +181,7 @@ async def run_pipeline(
             pbar.close()
 
         # --- DEEP AUDITS ---
-        if all_leads and (do_seo or do_ads or do_ig_web):
+        if all_leads and (do_seo or do_ads):
             top_for_audit = sorted(all_leads, key=lambda x: x.get("lead_score", 0), reverse=True)[
                 :10
             ]
@@ -225,8 +208,6 @@ async def run_pipeline(
             for lead in top_for_audit:
                 if do_ads:
                     lead["requires_ads_audit"] = True
-                if do_ig_web and lead.get("instagram_handle"):
-                    lead["requires_ig_web_prototype"] = True
 
         dup_threshold = config.get("scoring", {}).get("dup_threshold", DUP_THRESHOLD)
         all_leads = deduplicate_leads(all_leads, threshold=dup_threshold)

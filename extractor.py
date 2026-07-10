@@ -428,8 +428,10 @@ class PlacesExtractor:
         """
         bounds = await self.geocode_city(city_name)
         if not bounds:
-            logger.error("Could not geocode city '%s'", city_name)
-            return []
+            logger.warning(
+                "Geocoding failed for '%s', falling back to Text Search", city_name
+            )
+            return await self.search_businesses(keyword, city_name)
 
         cells = self.generate_grid(bounds, radius_m, overlap)
         if not cells:
