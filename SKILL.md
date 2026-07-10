@@ -6,11 +6,13 @@ description: >
   Use this skill for: finding leads, prospecting, competitive analysis, website audits,
   Meta Ads audits, and building personal brand sites from Instagram.
   
-  Triggers on:
+   Triggers on:
   - "extract leads", "find leads", "prospecting", "find prospects"
   - "audit website", "SEO audit", "Meta Ads audit", "business audit"
   - "instagram to web", "brand website", "convert instagram"
   - "lead report", "lead generation", "analyze business"
+  - "explore city", "grid search", "nearby search" (grid-based city exploration)
+  - "find instagram", "instagram search", "buscar instagram" (proactive IG enrichment)
 ---
 
 # Lead Extractor & Business Auditor Skill
@@ -20,9 +22,11 @@ Advanced lead generation and digital auditing. Searches Google Places, enriches 
 ## 🚀 Capabilities
 
 ### 1. Lead Extraction (Multi-Source)
-- **Google Places**: High-volume extraction using API.
+- **Google Places**: High-volume extraction using Text Search API.
+- **Grid Explore** (`--explore`): City-wide search using Nearby Search + geocoding. Divides a city into overlapping grid cells and searches each one. Much higher coverage than Text Search.
 - **Manual Search**: Deep search for specific niches using WebSearch/WebFetch.
 - **Enrichment**: WhatsApp, Social Media, and Hunter.io email detection.
+- **Proactive Instagram Search**: If a business has no Instagram on its website, searches Instagram's public API by business name + city to find its profile.
 - **Scoring**: 0-100 opportunity score based on digital gaps.
 
 ### 2. Specialized Audits (HTML Reports)
@@ -74,7 +78,12 @@ Advanced lead generation and digital auditing. Searches Google Places, enriches 
 
 ```bash
 # ── Standard Pipeline ───────────────────────────
-python pipeline.py --interactive
+python cli.py --interactive
+python cli.py --limit 20 --goal web
+
+# ── Grid Explore (city-wide) ────────────────────
+python cli.py --explore
+# Interactive wizard: city → industries → grid radius → Instagram search
 
 # ── SEO Audit ───────────────────────────────────
 # (Use the agent's internal SEO audit logic)
@@ -88,28 +97,40 @@ python pipeline.py --interactive
 
 # ── Instagram to Web ────────────────────────────
 "Convert @handle into a personal brand website"
+
+# ── CRM ─────────────────────────────────────────
+python cli.py --serve           # Serve report with CRM buttons
+python cli.py --crm-send leads.csv  # Batch send to CRM
 ```
 
 ## 📁 Directory Structure
-- `pipeline.py`: Main orchestration.
+- `cli.py`: Entry point (interactive, explore, CRM send/serve, audit).
+- `pipeline.py`: Orchestrator — connects extractor → enricher → scorer → audits.
+- `extractor.py`: Google Places API (Text Search + Nearby Search + geocoding + grid).
+- `instagram_search.py`: Proactive Instagram search via public topsearch API.
+- `enricher.py`: Data enrichment (Social/Email/Booking/WhatsApp).
+- `lead_scorer.py`: Scoring engine (9 goal types).
 - `analyzer.py`: Technical website analysis.
-- `extractor.py`: Google Places integration.
-- `enricher.py`: Data enrichment (Social/Email/Booking).
-- `lead_scorer.py`: Lead scoring engine.
-- `cli.py`: Interactive CLI interface.
 - `config_loader.py`: YAML configuration loading.
 - `exporters.py`: CSV/HTML export logic.
 - `booking_data.py`: Booking platform detection data.
-- `reporters.py`: Report generation utilities.
+- `reporters.py`: HTML report generation (Jinja2).
+- `serve_report.py`: Local proxy server for CRM buttons (solves CORS).
 - `agents/`: Specialized skill templates (SEO, Ads, Business, IG, Prospecting).
-- `tests/`: Test suite (pytest).
+- `tests/`: Test suite (pytest, 50 tests).
 - `docs/`: Reference docs (outreach templates, search tactics, industry filters).
 - `openspec/`: SDD change tracking.
 
 
 ```bash
 # Audit all websites from a CSV
-python pipeline.py --from-csv leads.csv --audit audit.html
+python cli.py --from-csv leads.csv --audit audit.html
+
+# Generate HTML report from CSV
+python cli.py --from-csv leads.csv --html report.html
+
+# Serve report with CRM buttons
+python cli.py --serve leads_output/report.html
 ```
 
 ## ⚙️ Configuration (`config.yaml`)
@@ -211,7 +232,7 @@ The skill is pre-configured for Chile but works anywhere. To change markets:
 
 1. Edit `config.yaml` → change `locations` to your cities/regions
 2. Change `industries` keywords to local language
-3. Run `python pipeline.py --interactive` or direct
+3. Run `python cli.py --interactive` or direct
 
 ## ❌ Common Errors & Fixes
 
@@ -228,20 +249,23 @@ The skill is pre-configured for Chile but works anywhere. To change markets:
 ```
 lead-extractor/
 ├── SKILL.md              ← This file (agent instructions)
-├── pipeline.py           ← Main CLI
-├── analyzer.py           ← Website audit
-├── extractor.py          ← Google Places search
-├── enricher.py           ← Social/WhatsApp/Booking detection
-├── lead_scorer.py        ← Scoring engine
-├── cli.py                ← Interactive CLI
+├── CLAUDE.md             ← Claude Code entry-point instructions
+├── cli.py                ← Entry point (interactive, explore, audit, CRM)
+├── pipeline.py           ← Orchestrator (extract → enrich → score → audit)
+├── extractor.py          ← Google Places API (Text + Nearby + geocoding + grid)
+├── instagram_search.py   ← Proactive Instagram search (public topsearch API)
+├── enricher.py           ← Social/WhatsApp/Booking/Email detection
+├── lead_scorer.py        ← Scoring engine (9 goals)
+├── analyzer.py           ← Website audit (SEO, images, booking, mobile, CMS)
 ├── config_loader.py      ← YAML config loading
 ├── exporters.py          ← CSV/HTML export
 ├── booking_data.py       ← Booking platform constants
-├── reporters.py          ← Report generation
+├── reporters.py          ← HTML report generation (Jinja2)
+├── serve_report.py       ← Local proxy for CRM buttons (solves CORS)
 ├── config.yaml           ← User configuration
-├── requirements.txt      ← Python deps (tqdm, aiohttp, rapidfuzz, …)
+├── requirements.txt      ← Python deps
 ├── README.md             ← GitHub readme
-├── tests/                ← Test suite (pytest)
+├── tests/                ← Test suite (50 tests, pytest)
 ├── agents/               ← Specialized skill templates (SEO, Ads, Business, IG)
 ├── docs/                 ← Reference documentation
 └── openspec/             ← SDD change tracking

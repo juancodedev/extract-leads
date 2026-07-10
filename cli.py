@@ -85,6 +85,8 @@ def _crm_send_lead(cookie: str, lead: dict) -> tuple[bool, str]:
         "origen": "Lead Extractor - Google Maps",
         "nombre": lead.get("contact_person") or lead.get("nombre") or lead.get("business_name") or "",
         "telefono": lead.get("phone") or lead.get("telefono") or "",
+        "direccion": lead.get("address") or lead.get("direccion") or "",
+        "sitio_web": lead.get("website") or lead.get("sitio_web") or "",
         "notas": (
             f"Lead Score: {lead.get('lead_score', 'N/A')} | "
             f"Industria: {lead.get('industry', 'N/A')} | "
@@ -274,6 +276,11 @@ async def main():
         help="Mark top prospects for Instagram-to-Web prototype",
     )
     parser.add_argument(
+        "--explore",
+        action="store_true",
+        help="Explore a city using grid-based Nearby Search (more coverage)",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Show what would be searched without making API calls",
@@ -335,6 +342,13 @@ async def main():
     # Interactive mode
     if args.interactive:
         await run_interactive()
+        return
+
+    # Explore mode (grid-based city exploration)
+    if args.explore:
+        api_key = args.google_key or os.environ.get("GOOGLE_PLACES_API_KEY", "")
+        hunter_key = args.hunter_key or os.environ.get("HUNTER_API_KEY", "")
+        await run_explore(api_key, hunter_key)
         return
 
     # Load configuration
@@ -642,6 +656,230 @@ async def run_interactive():
         await generate_audit_report(leads, audit_output)
 
     print("\n✅ Listo!")
+
+
+# ── Explore Mode (Grid-based) ──
+
+
+async def run_explore(api_key: str, hunter_key: str):
+    """Interactive city exploration using grid-based Nearby Search.
+
+    Asks for city, industries, and grid configuration, then runs a
+    comprehensive grid search with proactive Instagram enrichment.
+    """
+    print("\n" + "=" * 55)
+    print(" 🗺️  EXPLORE — Grid-based City Search")
+    print("=" * 55)
+    print("  Busca una ciudad entera por cuadrantes para obtener")
+    print("  muchos más resultados que la búsqueda normal.")
+    print()
+
+    if not api_key:
+        api_key = input("🔑 Google Places API key: ").strip()
+        if not api_key:
+            api_key = os.environ.get("GOOGLE_PLACES_API_KEY", "")
+        if not api_key:
+            logger.error("Se necesita una API key de Google Places")
+            sys.exit(1)
+
+    if not hunter_key:
+        hunter_key = os.environ.get("HUNTER_API_KEY", "")
+
+    # ── City ──
+    city = input("📍 Ciudad a explorar (ej: Ñuñoa, Santiago, Viña del Mar): ").strip()
+    if not city:
+        logger.error("Ciudad requerida")
+        sys.exit(1)
+
+    # ── Industries ──
+    print("\n📋 Industrias disponibles:")
+    available = get_default_industries()
+    for key, ind in sorted(available.items(), key=lambda x: int(x[0])):
+        print(f"  [{key}] {ind['name']}")
+    print(f"  [{len(available) + 1}] Personalizada")
+
+    selected = input("\n¿Qué industria(s)? (ej: 1,2,3 o 'todas'): ").strip()
+
+    chosen_industries = []
+    if selected.lower() in ("todas", "all", "*"):
+        chosen_industries = list(available.values())
+    elif selected == str(len(available) + 1):
+        custom_name = input("  Nombre: ").strip()
+        custom_kws = input("  Keywords (separadas por coma): ").strip().split(",")
+        chosen_industries.append({
+            "name": custom_name,
+            "keywords": [k.strip() for k in custom_kws],
+            "bonus_score": 5,
+        })
+    else:
+        for s in selected.split(","):
+            s = s.strip()
+            if s in available:
+                chosen_industries.append(available[s])
+
+    if not chosen_industries:
+        logger.error("No seleccionaste ninguna industria")
+        sys.exit(1)
+
+    # ── Grid configuration ──
+    print("\n⚙️  CONFIGURACIÓN DE CUADRANTES:")
+    print("  Radio por celda: define el área de cada búsqueda.")
+    print("    • 800m  → máxima granularidad (~4-5 por cuadrante)")
+    print("    • 1500m → balanceado (default)")
+    print("    • 3000m → cobertura rápida, menos detalle")
+    radius_str = input("\nRadio por celda en metros (default: 1500): ").strip()
+    try:
+        grid_radius = int(radius_str) if radius_str else 1500
+    except ValueError:
+        grid_radius = 1500
+
+    overlap_str = input("Superposición entre celdas % (default: 20): ").strip()
+    try:
+        grid_overlap = float(overlap_str) / 100 if overlap_str else 0.2
+    except ValueError:
+        grid_overlap = 0.2
+
+    # ── Instagram search ──
+    do_ig = input("\n📸 ¿Buscar Instagram de cada negocio? (s/n, default: s): ").strip().lower() != "n"
+
+    # ── Goal ──
+    print("\n🎯 ¿Cuál es tu objetivo? (Esto ajusta la puntuación):")
+    print("  [1] Vender Diseño Web (oportunidad si NO tienen web)")
+    print("  [2] Vender SEO (oportunidad si tienen web pero mal SEO)")
+    print("  [3] Vender Ads (oportunidad si tienen web y necesitan tráfico)")
+    print("  [4] General (calidad de presencia digital)")
+    print("  [5] Automatización (procesos, flujos de trabajo)")
+    print("  [6] Sistema de Reservas (booking, turnos)")
+    print("  [7] Menú Interactivo (QR, catálogo digital)")
+    print("  [8] Sistema de Inventario (stock, control)")
+    print("  [9] Sistema POS (punto de venta, checkout)")
+    goal_map = {"1": "web", "2": "seo", "3": "ads", "4": "general",
+                "5": "automatizacion", "6": "reservas", "7": "menus",
+                "8": "inventarios", "9": "pos"}
+    goal = goal_map.get(input("\nElige una opción (1-9, default: 4): ").strip(), "general")
+
+    limit_str = input(f"\n🔢 Límite de leads (default: 200): ").strip()
+    try:
+        limit = int(limit_str) if limit_str else 200
+    except ValueError:
+        limit = 200
+
+    # ── Summary ──
+    print("\n" + "=" * 55)
+    print("  RESUMEN DE EXPLORACIÓN")
+    print("=" * 55)
+    print(f"  Ciudad:     {city}")
+    print(f"  Industrias: {len(chosen_industries)} ({', '.join(i['name'] for i in chosen_industries)})")
+    print(f"  Radio:      {grid_radius}m con {grid_overlap * 100:.0f}% superposición")
+    print(f"  Instagram:  {'Sí' if do_ig else 'No'}")
+    print(f"  Goal:       {goal}")
+    print(f"  Límite:     {limit} leads")
+    print()
+
+    confirm = input("¿Comenzar exploración? (s/n, default: s): ").strip().lower()
+    if confirm == "n":
+        print("Cancelado.")
+        return
+
+    # ── Build config ──
+    from config_loader import get_default_locations
+    all_cities = get_default_locations()
+
+    # Check if the city is in our defaults
+    city_cfg = None
+    for c in all_cities:
+        if c["city"].lower() == city.lower():
+            city_cfg = c
+            break
+    if not city_cfg:
+        # Assume the city name directly, will geocode at runtime
+        # (grid search geocodes the city name to bounds)
+        city_cfg = {"city": city, "region": "Personalizada", "premium": False}
+
+    config = {
+        "business": {"name": "Exploración", "product_type": goal, "description": ""},
+        "search": {
+            "industries": chosen_industries,
+            "locations": [city_cfg],
+            "target_size": "micro",
+        },
+        "extraction": {
+            "max_pages": 3,
+            "page_token_delay": 3,
+            "request_timeout": 15,
+            "max_retries": 3,
+            "retry_backoff": 1.5,
+        },
+        "enrichment": {
+            "hunter_timeout": 10,
+            "website_scan_timeout": 10,
+            "max_retries": 3,
+            "retry_backoff": 1.5,
+        },
+        "scoring": {
+            "base_score": 50,
+            "max_score": 100,
+            "dup_threshold": 85,
+            "weights": {
+                "website": 15,
+                "active_social": 20,
+                "whatsapp": 10,
+                "pain_points": 15,
+                "multiple_channels": 10,
+                "owner_info": 5,
+                "premium_location": 10,
+            },
+            "thresholds": {"slow_ms": 3000, "warn_ms": 1500},
+            "goal_bonuses": {},
+            "tiers": {"hot": [80, 100], "warm": [60, 79], "cool": [40, 59], "cold": [0, 39]},
+        },
+        "output": {"format": "csv", "fields": []},
+    }
+
+    # ── Run grid pipeline ──
+    leads = await run_pipeline(
+        config,
+        api_key,
+        hunter_key,
+        limit=limit,
+        goal=goal,
+        do_ig_web=do_ig,
+        grid=True,
+        grid_radius=grid_radius,
+        grid_overlap=grid_overlap,
+    )
+
+    if not leads:
+        logger.warning("No se encontraron leads. Probá con radio más grande o más industrias.")
+        return
+
+    # ── Output ──
+    from datetime import datetime
+    output = f"leads_output/explore_{city.lower().replace(' ', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+    export_csv(leads, output)
+    print_summary(leads)
+
+    # HTML report
+    html_choice = input("\n¿Generar reporte HTML? (s/n, default: s): ").strip().lower()
+    if html_choice != "n":
+        html_output = output.replace(".csv", ".html")
+        export_html(leads, html_output)
+        print(f"  📄 HTML: {html_output}")
+
+    # CRM
+    crm_choice = input("\n¿Enviar al CRM? (s/n, default: n): ").strip().lower()
+    if crm_choice == "s":
+        crm_send_batch(output)
+
+    # Save config
+    save = input("\n¿Guardar configuración? (s/n, default: n): ").strip().lower()
+    if save == "s":
+        import yaml
+        with open("config_explore.yaml", "w", encoding="utf-8") as f:
+            yaml.dump(config, f, allow_unicode=True, default_flow_style=False)
+        print("  Config guardada en config_explore.yaml")
+
+    print("\n✅ Exploración completa!")
 
 
 def main_wrapper():

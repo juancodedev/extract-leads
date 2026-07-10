@@ -173,7 +173,6 @@ def export_html(leads: list[dict], output_path: str):
         industries.append({"name": str(ind_name), "count": count, "pct": pct})
 
     # Top Opportunities section (Inspired by kit-prospeccion)
-    top_leads = leads[:5]
     top_opportunities = []
     for lead_idx, lead in enumerate(leads[:5]):
         raw_name = str(lead.get("business_name", ""))
@@ -227,10 +226,11 @@ def export_html(leads: list[dict], output_path: str):
             "contact_person": lead.get("contact_person", ""),
             "industry": lead.get("industry", ""),
             "city": lead.get("city", ""),
+            "address": lead.get("address", ""),
+            "website": lead.get("website", ""),
             "lead_score": lead.get("lead_score", 0),
             "lead_tier": lead.get("lead_tier", "COLD"),
             "scoring_notes": lead.get("scoring_notes", ""),
-            "website": lead.get("website", ""),
         }
         for lead in leads
     ], ensure_ascii=False)

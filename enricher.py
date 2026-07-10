@@ -110,7 +110,7 @@ class Enricher:
 
         return None
 
-    async def scan_website(self, website: str, business_name: str = "") -> dict[str, Any]:
+    async def scan_website(self, website: str) -> dict[str, Any]:
         """Scan website HTML for social media, WhatsApp, and booking links.
 
         Returns dict with: facebook, instagram, linkedin, whatsapp, booking_links.

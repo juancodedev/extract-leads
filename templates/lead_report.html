@@ -289,6 +289,8 @@ async function sendToCRM(btn) {
       origen: 'Lead Extractor - Google Maps',
       nombre: lead.contact_person || lead.nombre || lead.business_name || '',
       telefono: lead.phone || lead.telefono || '',
+      direccion: lead.address || lead.direccion || '',
+      sitio_web: lead.website || lead.sitio_web || '',
       notas: [
         'Lead Score: ' + (lead.lead_score !== undefined ? lead.lead_score : 'N/A'),
         'Industria: ' + (lead.industry || 'N/A'),

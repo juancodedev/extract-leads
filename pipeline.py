@@ -19,6 +19,7 @@ from tqdm import tqdm
 from analyzer import WebsiteAnalyzer
 from enricher import Enricher
 from extractor import PlacesExtractor
+from instagram_search import search_instagram_profile
 from lead_scorer import LeadScorer
 
 logging.basicConfig(
@@ -56,11 +57,22 @@ async def run_pipeline(
     do_seo: bool = False,
     do_ads: bool = False,
     do_ig_web: bool = False,
+    *,
+    grid: bool = False,
+    grid_radius: int = 1500,
+    grid_overlap: float = 0.2,
+    grid_cell_limit: int = 50,
 ) -> list[dict]:
     """Execute the full extraction pipeline with optional deep audits.
 
     Creates a single aiohttp.ClientSession and injects it into all
     HTTP-consuming modules for connection pooling and DNS caching.
+
+    Args:
+        grid: Use Nearby Search grid instead of Text Search (much more results).
+        grid_radius: Search radius in meters per grid cell.
+        grid_overlap: Fractional overlap between adjacent cells.
+        grid_cell_limit: Max grid cells to search (safety cap).
     """
     connector = aiohttp.TCPConnector(limit=20, ttl_dns_cache=300)
     async with aiohttp.ClientSession(connector=connector) as session:
@@ -96,9 +108,20 @@ async def run_pipeline(
                         pbar.set_postfix_str(f"{keyword} @ {loc['city']}")
 
                     try:
-                        results = await extractor.search_businesses(
-                            keyword, f"{loc['city']}, {loc['region']}"
-                        )
+                        if grid:
+                            # Grid-based Nearby Search (much more coverage)
+                            results = await extractor.search_with_grid(
+                                keyword,
+                                f"{loc['city']}, {loc['region']}",
+                                radius_m=grid_radius,
+                                overlap=grid_overlap,
+                                cell_limit=grid_cell_limit,
+                            )
+                        else:
+                            # Standard Text Search
+                            results = await extractor.search_businesses(
+                                keyword, f"{loc['city']}, {loc['region']}"
+                            )
                     except Exception as e:
                         logger.error("Search failed: %s", e)
                         continue
@@ -140,7 +163,8 @@ async def run_pipeline(
                     # Enrich all leads in this batch in parallel
                     if lead_batch:
                         enrich_tasks = [
-                            _enrich_lead(lead, enricher, hunter_key) for lead in lead_batch
+                            _enrich_lead(lead, enricher, session, hunter_key)
+                            for lead in lead_batch
                         ]
                         enriched = await asyncio.gather(*enrich_tasks, return_exceptions=True)
 
@@ -210,8 +234,13 @@ async def run_pipeline(
     return all_leads
 
 
-async def _enrich_lead(lead: dict, enricher: "Enricher", hunter_key: str) -> dict:
-    """Enrich a single lead with email + website scan."""
+async def _enrich_lead(
+    lead: dict,
+    enricher: "Enricher",
+    session: aiohttp.ClientSession,
+    hunter_key: str,
+) -> dict:
+    """Enrich a single lead with email + website scan + proactive Instagram search."""
     updates = {}
     if lead["website"] and hunter_key:
         domain = Enricher.extract_domain(lead["website"])
@@ -221,7 +250,7 @@ async def _enrich_lead(lead: dict, enricher: "Enricher", hunter_key: str) -> dic
                 updates["email"] = email
 
     if lead["website"]:
-        scan = await enricher.scan_website(lead["website"], lead["business_name"])
+        scan = await enricher.scan_website(lead["website"])
         updates["facebook_url"] = scan.get("facebook") or ""
         ig = scan.get("instagram") or ""
         updates["instagram_handle"] = f"@{ig}" if ig and not ig.startswith("@") else ig
@@ -229,6 +258,16 @@ async def _enrich_lead(lead: dict, enricher: "Enricher", hunter_key: str) -> dic
         updates["whatsapp_link"] = scan.get("whatsapp") or ""
         booking: list[str] = scan.get("booking_links", [])
         updates["booking_links"] = " | ".join(booking) if booking else ""
+
+    # Proactive Instagram search: if we didn't find one on the website, search by name + city
+    if not updates.get("instagram_handle"):
+        ig_handle = await search_instagram_profile(
+            session,
+            lead.get("business_name", ""),
+            location=lead.get("city", ""),
+        )
+        if ig_handle:
+            updates["instagram_handle"] = ig_handle
 
     # WhatsApp fallback from phone
     if not updates.get("whatsapp_link") and lead.get("phone"):

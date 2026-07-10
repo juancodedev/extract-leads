@@ -16,7 +16,24 @@ Motor de prospección inteligente y auditoría digital. Busca, enriquece, califi
 - **Integración con CRM** — Botón "Enviar al CRM" en cada lead del reporte HTML. Envío batch desde CLI. Servidor local proxy para evitar CORS.
 - **Reporte responsivo** — En desktop tabla completa; en mobile cada lead se convierte en card vertical con label + valor.
 - **Barra de progreso** — `tqdm` en pipeline de extracción y auditoría.
+- **Exploración por cuadrantes** — `--explore` divide una ciudad en una grilla de celdas superpuestas y busca en cada una con Nearby Search. Mucho más cobertura que Text Search.
+- **Búsqueda proactiva de Instagram** — Si un negocio no tiene Instagram en su web, busca automáticamente en Instagram por nombre + ciudad usando la API pública de topsearch.
+- **Geocoding + Nearby Search** — Convierte nombre de ciudad en coordenadas y busca por radio, generando grillas de hasta 50 celdas con 20% de superposición.
 - **Modo interactivo** — Menú guiado que construye la configuración sin tocar YAML.
+
+## Uso como Skill de Claude/OpenCode
+
+Este proyecto funciona como **skill de Claude Code**. Al trabajar en este directorio, el agente lee `CLAUDE.md` y `SKILL.md` automáticamente.
+
+```bash
+# El agente entiende lenguaje natural:
+"Buscame 30 barberías en Ñuñoa para venderles web"
+"Explora Santiago con el --explore y busca cafeterías"
+"Búscame el Instagram de esta peluquería que no tiene"
+"Audita el SEO de peluqueriaejemplo.cl"
+```
+
+**Triggers de activación**: `extract leads`, `find leads`, `prospecting`, `explore city`, `grid search`, `find instagram`, `audit website`, `instagram to web`.
 
 ## Instalación
 
@@ -55,6 +72,34 @@ CRM_API_PASSWORD="tu-contraseña"
 
 ```bash
 lead-extractor --help
+```
+
+### Modo exploración por cuadrantes (`--explore`)
+
+```bash
+python cli.py --explore
+```
+
+Wizard interactivo que divide una ciudad en una grilla de celdas y busca en cada una con Nearby Search. Mucho más leads que el modo normal. Ideal para prospección masiva.
+
+```
+¿Qué hace internamente?
+  1. Geocodifica la ciudad (ej: "Ñuñoa" → coordenadas + viewport)
+  2. Genera grilla de celdas superpuestas (ej: 12 × 12 = 144 celdas)
+  3. Busca en cada celda con Nearby Search + keyword
+  4. Deduplica por place_id
+  5. Enriquecimiento: web scan + Instagram proactivo + WhatsApp
+```
+
+Pregunta por: ciudad, industria(s), radio por celda (default 1500m), superposición (default 20%), búsqueda de Instagram, y límite de leads.
+
+Ejemplos:
+```bash
+# Exploración completa de Ñuñoa para barberías
+python cli.py --explore
+
+# También funciona interactivo con grid pasando flags extra
+python cli.py --interactive  # el modo tradicional
 ```
 
 ### Modo interactivo
@@ -104,6 +149,7 @@ python cli.py --crm-send leads_output/leads.csv
   --seo               Auditoría SEO técnica para los top 10
   --ads               Marcar prospectos para Meta Ads
   --ig-web            Marcar prospectos para Instagram → Web
+  --explore           Exploración por cuadrantes (Nearby Search grid)
   --dry-run           Mostrar plan de búsqueda sin llamar APIs
   --audit FILE        Auditar websites desde CSV → HTML
   --html FILE         Generar reporte HTML desde CSV existente
@@ -219,6 +265,8 @@ El proyecto puede enviar leads directamente a un CRM compatible (endpoint REST) 
 | `source`           | `origen`      |
 | `contact_person`   | `nombre`      |
 | `phone`            | `telefono`    |
+| `address`          | `direccion`   |
+| `website`          | `sitio_web`   |
 | `scoring_notes`    | `notas`       |
 | `date_found`       | `fecha_captura` |
 | *(fijo)*           | `status: "Nuevo"` |
@@ -254,9 +302,12 @@ Scorecards por sitio con: technical score (0-100), response time, SSL, sistema d
 
 ```
 extract-leads/
-├── cli.py                  # CLI entry point + modo interactivo
+├── SKILL.md                # Skill definition (frontmatter + triggers + workflows)
+├── CLAUDE.md               # Claude Code entry-point instructions
+├── cli.py                  # CLI entry point + interactivo + explore + CRM
 ├── pipeline.py             # Orquestador async principal
-├── extractor.py            # Google Places API (async + retry)
+├── extractor.py            # Google Places API (async + retry + geocoding + grid search)
+├── instagram_search.py     # Búsqueda proactiva de Instagram (API pública topsearch)
 ├── enricher.py             # Email (Hunter.io) + social/booking scan
 ├── lead_scorer.py          # Scoring engine con flags de oportunidad
 ├── analyzer.py             # Website analyzer (SEO, imágenes, contacto)
@@ -269,7 +320,7 @@ extract-leads/
 ├── pyproject.toml          # Packaging, entry points, ruff, mypy
 ├── requirements.txt        # Dependencias runtime
 ├── templates/              # Jinja2: lead_report.html, audit_report.html
-├── tests/                  # 36 tests (pytest)
+├── tests/                  # 50 tests (pytest)
 ├── agents/                 # Kits de auditoría especializada
 ├── docs/                   # Guías de outreach, filtros, tácticas
 └── .github/workflows/      # CI: ruff + mypy + pytest

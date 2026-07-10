@@ -114,7 +114,7 @@ class WebsiteAnalyzer:
                 result["redirects"] = len(resp.history)
                 result["final_url"] = str(resp.url)
 
-                result.update(self._analyze_html(html, clean_url))
+                result.update(self._analyze_html(html))
                 result.update(self._analyze_headers(resp.headers))  # type: ignore[arg-type]
                 result["improvements"] = self._generate_improvements(result)
 
@@ -139,12 +139,12 @@ class WebsiteAnalyzer:
             return ""
         return url
 
-    def _analyze_html(self, html: str, url: str) -> dict:
+    def _analyze_html(self, html: str) -> dict:
         analysis = {
             "page_size_kb": len(html) // 1024,
             "seo": self._analyze_seo(html),
             "images": self._analyze_images(html),
-            "booking": self._analyze_booking(html, url),
+            "booking": self._analyze_booking(html),
             "contact": self._analyze_contact(html),
             "content": self._analyze_content(html),
             "mobile": self._analyze_mobile(html),
@@ -256,7 +256,7 @@ class WebsiteAnalyzer:
             "has_lazy_loading": has_lazy,
         }
 
-    def _analyze_booking(self, html: str, url: str) -> dict:
+    def _analyze_booking(self, html: str) -> dict:
         result: dict[str, Any] = {
             "has_booking": False,
             "systems": [],
