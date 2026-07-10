@@ -52,8 +52,10 @@ th { text-align:left; padding:10px 8px; font-weight:600; color:#475569; border-b
 td { padding:9px 8px; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
 tbody tr:hover { background:#fafafa; }
 .num { text-align:center; }
-.contacts-wrap { display:inline-flex; align-items:center; gap:3px; }
-a.contact-badge { text-decoration:none; cursor:pointer; opacity:0.75; transition:all 0.15s; display:inline-flex; align-items:center; vertical-align:middle; }
+.contacts-wrap { display:inline-flex; align-items:center; gap:1px; margin:0; padding:0; line-height:0; }
+a.contact-badge { text-decoration:none; cursor:pointer; opacity:0.75; transition:all 0.15s; display:inline-flex; align-items:center; justify-content:center; margin:0; padding:0; line-height:0; }
+a.contact-badge .material-icons { font-size:18px; line-height:0; }
+a.contact-badge svg { display:block; }
 a.contact-badge:hover { opacity:1; transform:scale(1.15); }
 .booking-badge { text-decoration:none; cursor:pointer; opacity:0.7; display:inline-flex; align-items:center; vertical-align:middle; }
 .booking-badge:hover { opacity:1; transform:scale(1.15); }
