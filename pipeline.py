@@ -234,6 +234,52 @@ async def run_pipeline(
     return all_leads
 
 
+# Social URL patterns — when Google Places returns a social profile as the "website"
+_SOCIAL_URL_PATTERNS: dict[str, list[str]] = {
+    "instagram": [
+        r"(?:instagram\.com|instagr\.am)/([a-zA-Z0-9._-]+)",
+    ],
+    "facebook": [
+        r"(?:facebook\.com|fb\.com)/([a-zA-Z0-9._-]+)",
+    ],
+    "linkedin": [
+        r"linkedin\.com/(?:company|in)/([a-zA-Z0-9._-]+)",
+    ],
+}
+_SOCIAL_SKIP = {"p", "explore", "accounts", "developer", "about", "share.php", "sharer", "plugins", "tr", "track", "events", "help", "legal", "terms", "static", "rsrc.php"}
+
+
+def _normalize_social_as_website(lead: dict) -> dict | None:
+    """Check if the website field is actually a social-media profile URL.
+
+    If so, return an updates dict with the social handle extracted and
+    the website field cleared so the rest of the pipeline doesn't treat
+    it as a real website.  Returns ``None`` when the URL is a normal domain.
+    """
+    website = (lead.get("website") or "").strip()
+    if not website:
+        return None
+
+    url_lower = website.lower()
+
+    for platform, patterns in _SOCIAL_URL_PATTERNS.items():
+        for pat in patterns:
+            m = re.search(pat, url_lower)
+            if m:
+                handle = m.group(1)
+                if handle and handle not in _SOCIAL_SKIP and len(handle) >= 3:
+                    updates: dict = {"website": ""}
+                    if platform == "instagram":
+                        updates["instagram_handle"] = f"@{handle}"
+                    elif platform == "facebook":
+                        updates["facebook_url"] = f"facebook.com/{handle}"
+                    elif platform == "linkedin":
+                        updates["linkedin_url"] = f"linkedin.com/{handle}"
+                    return updates
+
+    return None
+
+
 async def _enrich_lead(
     lead: dict,
     enricher: "Enricher",
@@ -242,22 +288,32 @@ async def _enrich_lead(
 ) -> dict:
     """Enrich a single lead with email + website scan + proactive Instagram search."""
     updates = {}
-    if lead["website"] and hunter_key:
-        domain = Enricher.extract_domain(lead["website"])
-        if domain:
-            email = await enricher.find_email(domain)
-            if email:
-                updates["email"] = email
 
-    if lead["website"]:
-        scan = await enricher.scan_website(lead["website"])
-        updates["facebook_url"] = scan.get("facebook") or ""
-        ig = scan.get("instagram") or ""
-        updates["instagram_handle"] = f"@{ig}" if ig and not ig.startswith("@") else ig
-        updates["linkedin_url"] = scan.get("linkedin") or ""
-        updates["whatsapp_link"] = scan.get("whatsapp") or ""
-        booking: list[str] = scan.get("booking_links", [])
-        updates["booking_links"] = " | ".join(booking) if booking else ""
+    # ── Social URL normalisation ──
+    # If the "website" from Google Places is actually an Instagram/Facebook/LinkedIn
+    # profile, extract the handle and skip website scanning.
+    social_fix = _normalize_social_as_website(lead)
+    if social_fix is not None:
+        updates.update(social_fix)
+        # Don't scan or email-hunt social profiles — they're not real websites.
+        # Still run the proactive Instagram search below if needed.
+    else:
+        if lead["website"] and hunter_key:
+            domain = Enricher.extract_domain(lead["website"])
+            if domain:
+                email = await enricher.find_email(domain)
+                if email:
+                    updates["email"] = email
+
+        if lead["website"]:
+            scan = await enricher.scan_website(lead["website"])
+            updates["facebook_url"] = scan.get("facebook") or ""
+            ig = scan.get("instagram") or ""
+            updates["instagram_handle"] = f"@{ig}" if ig and not ig.startswith("@") else ig
+            updates["linkedin_url"] = scan.get("linkedin") or ""
+            updates["whatsapp_link"] = scan.get("whatsapp") or ""
+            booking: list[str] = scan.get("booking_links", [])
+            updates["booking_links"] = " | ".join(booking) if booking else ""
 
     # Proactive Instagram search: if we didn't find one on the website, search by name + city
     if not updates.get("instagram_handle"):
