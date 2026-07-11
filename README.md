@@ -16,10 +16,10 @@ Motor de prospección inteligente y auditoría digital. Busca, enriquece, califi
 - **Integración con CRM** — Botón "Enviar al CRM" en cada lead del reporte HTML. Envío batch desde CLI. Servidor local proxy para evitar CORS.
 - **Reporte responsivo** — En desktop tabla completa; en mobile cada lead se convierte en card vertical con label + valor.
 - **Barra de progreso** — `tqdm` en pipeline de extracción y auditoría.
-- **Exploración por cuadrantes** — `--explore` divide una ciudad en una grilla de celdas superpuestas y busca en cada una con Nearby Search. Mucho más cobertura que Text Search.
+- **Exploración por grilla (Nearby Search)** — Divide la ciudad en una grilla de celdas superpuestas y busca en cada una con Nearby Search. Mucho más cobertura que Text Search. Si el geocoding falla, hace fallback automático a Text Search.
 - **Búsqueda proactiva de Instagram** — Si un negocio no tiene Instagram en su web, busca automáticamente en Instagram por nombre + ciudad usando la API pública de topsearch.
 - **Geocoding + Nearby Search** — Convierte nombre de ciudad en coordenadas y busca por radio, generando grillas de hasta 50 celdas con 20% de superposición.
-- **Modo interactivo** — Menú guiado que construye la configuración sin tocar YAML.
+- **Flujo interactivo unificado** — Un solo entry point sin flags. Menú guiado que construye la configuración sin tocar YAML.
 
 ## Uso como Skill de Claude/OpenCode
 
@@ -28,12 +28,12 @@ Este proyecto funciona como **skill de Claude Code**. Al trabajar en este direct
 ```bash
 # El agente entiende lenguaje natural:
 "Buscame 30 barberías en Ñuñoa para venderles web"
-"Explora Santiago con el --explore y busca cafeterías"
+"Extrae cafeterías en Santiago con auditoría SEO"
 "Búscame el Instagram de esta peluquería que no tiene"
 "Audita el SEO de peluqueriaejemplo.cl"
 ```
 
-**Triggers de activación**: `extract leads`, `find leads`, `prospecting`, `explore city`, `grid search`, `find instagram`, `audit website`, `instagram to web`.
+**Triggers de activación**: `extract leads`, `find leads`, `prospecting`, `find instagram`, `audit website`, `instagram to web`.
 
 ## Instalación
 
@@ -74,43 +74,29 @@ CRM_API_PASSWORD="tu-contraseña"
 lead-extractor --help
 ```
 
-### Modo exploración por cuadrantes (`--explore`)
+### Flujo interactivo unificado (entry point default)
 
 ```bash
-python cli.py --explore
+python cli.py
 ```
 
-Wizard interactivo que divide una ciudad en una grilla de celdas y busca en cada una con Nearby Search. Mucho más leads que el modo normal. Ideal para prospección masiva.
+Sin flags arranca el flujo completo. Te guía paso a paso por todo el pipeline:
 
 ```
-¿Qué hace internamente?
-  1. Geocodifica la ciudad (ej: "Ñuñoa" → coordenadas + viewport)
-  2. Genera grilla de celdas superpuestas (ej: 12 × 12 = 144 celdas)
-  3. Busca en cada celda con Nearby Search + keyword
-  4. Deduplica por place_id
-  5. Enriquecimiento: web scan + Instagram proactivo + WhatsApp
+1. Seleccionás industria(s) del catálogo
+2. Ingresás una ciudad en texto libre
+3. Geocodificación automática → generación de grilla de celdas
+4. Configurás radio por celda (default 1500m) y superposición (default 20%)
+5. Elegís objetivo de scoring (9 opciones)
+6. Configurás auditorías profundas (SEO, Meta Ads, IG→Web)
+7. Definís límite de leads (default 100)
+8. Resumen y confirmación → extracción con Nearby Search + grilla
+9. Post-procesamiento: HTML, auditoría websites, CRM, guardar config
 ```
 
-Pregunta por: ciudad, industria(s), radio por celda (default 1500m), superposición (default 20%), búsqueda de Instagram, y límite de leads.
+Si el geocoding de la ciudad falla, el sistema hace fallback automático a Text Search.
 
-Ejemplos:
-```bash
-# Exploración completa de Ñuñoa para barberías
-python cli.py --explore
-
-# También funciona interactivo con grid pasando flags extra
-python cli.py --interactive  # el modo tradicional
-```
-
-### Modo interactivo
-
-```bash
-python cli.py --interactive
-```
-
-Te guía paso a paso: industria, ciudad, objetivo de venta, auditorías y límite. Genera `config.yaml`, CSV, HTML y opcionalmente auditoría SEO.
-
-### CLI directo
+### CLI directo (modo batch)
 
 ```bash
 # Buscar 50 leads para vender SEO con auditoría activada
@@ -138,18 +124,14 @@ python cli.py --crm-send leads_output/leads.csv
 ### Opciones completas
 
 ```
-  --config PATH       YAML de configuración (default: config.yaml)
-  --output PATH       CSV de salida (default: leads_output/leads.csv)
   --limit N           Máximo de leads (0 = sin límite)
   --google-key KEY    API key de Google Places (o env)
   --hunter-key KEY    API key de Hunter.io (o env)
-  --interactive       Modo interactivo guiado
-  --goal {web,seo,ads,general}
+  --goal {web,seo,ads,general,automatizacion,reservas,menus,inventarios,pos}
                       Objetivo de venta para el scoring (default: general)
   --seo               Auditoría SEO técnica para los top 10
   --ads               Marcar prospectos para Meta Ads
   --ig-web            Marcar prospectos para Instagram → Web
-  --explore           Exploración por cuadrantes (Nearby Search grid)
   --dry-run           Mostrar plan de búsqueda sin llamar APIs
   --audit FILE        Auditar websites desde CSV → HTML
   --html FILE         Generar reporte HTML desde CSV existente
@@ -304,7 +286,7 @@ Scorecards por sitio con: technical score (0-100), response time, SSL, sistema d
 extract-leads/
 ├── SKILL.md                # Skill definition (frontmatter + triggers + workflows)
 ├── CLAUDE.md               # Claude Code entry-point instructions
-├── cli.py                  # CLI entry point + interactivo + explore + CRM
+├── cli.py                  # CLI entry point — flujo interactivo unificado + CRM
 ├── pipeline.py             # Orquestador async principal
 ├── extractor.py            # Google Places API (async + retry + geocoding + grid search)
 ├── instagram_search.py     # Búsqueda proactiva de Instagram (API pública topsearch)
