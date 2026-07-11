@@ -79,6 +79,7 @@ def _crm_send_lead(cookie: str, lead: dict) -> tuple[bool, str]:
         name = lead.get("business_name") or lead.get("empresa") or "lead"
         email = re.sub(r"[^a-z0-9]", "", name.lower()) + "@sin-email.lead"
 
+    site = lead.get("website") or lead.get("sitio_web") or ""
     payload = {
         "empresa": lead.get("business_name") or lead.get("empresa") or "",
         "email": email,
@@ -86,7 +87,6 @@ def _crm_send_lead(cookie: str, lead: dict) -> tuple[bool, str]:
         "nombre": lead.get("contact_person") or lead.get("nombre") or lead.get("business_name") or "",
         "telefono": lead.get("phone") or lead.get("telefono") or "",
         "direccion": lead.get("address") or lead.get("direccion") or "",
-        "sitio_web": lead.get("website") or lead.get("sitio_web") or "",
         "notas": (
             f"Lead Score: {lead.get('lead_score', 'N/A')} | "
             f"Industria: {lead.get('industry', 'N/A')} | "
@@ -94,6 +94,8 @@ def _crm_send_lead(cookie: str, lead: dict) -> tuple[bool, str]:
         ),
         "status": "Nuevo",
     }
+    if site:
+        payload["sitio_web"] = site
 
     url = f"{CRM_API_URL}/api/leads"
     data = json.dumps(payload).encode()
@@ -122,6 +124,27 @@ def _crm_send_lead(cookie: str, lead: dict) -> tuple[bool, str]:
         return False, f"Error conexión: {e.reason}"
 
 
+def _crm_fetch_existing(cookie: str) -> set[str]:
+    """Fetch all existing leads from CRM and return a set of (business_name, email) tuples (lowercased)."""
+    url = f"{CRM_API_URL}/api/leads"
+    req = Request(url, headers={"Cookie": cookie}, method="GET")
+    try:
+        with urlopen(req, timeout=30) as resp:
+            existing = json.loads(resp.read().decode())
+            seen: set[str] = set()
+            for lead in existing if isinstance(existing, list) else []:
+                name = (lead.get("company") or lead.get("name") or "").strip().lower()
+                email = (lead.get("email") or "").strip().lower()
+                if name:
+                    seen.add(name)
+                if email:
+                    seen.add(email)
+            return seen
+    except (HTTPError, URLError, json.JSONDecodeError) as e:
+        logger.warning("No se pudieron cargar leads existentes: %s", e)
+        return set()
+
+
 def crm_send_batch(csv_path: str):
     """Send all leads from a CSV to the CRM."""
     from exporters import load_leads_from_csv
@@ -136,14 +159,31 @@ def crm_send_batch(csv_path: str):
     if not cookie:
         sys.exit(1)
 
+    logger.info("Cargando leads existentes para evitar duplicados...")
+    existing = _crm_fetch_existing(cookie)
+    if existing:
+        logger.info("CRM tiene %d registros — verificando duplicados", len(existing))
+
     print(f"\n{'='*50}")
     print(f"  Enviando {len(leads)} leads al CRM...")
     print(f"{'='*50}\n")
 
+    # Build a lookup key for each lead
+    def _lead_key(lead: dict) -> str:
+        return (lead.get("business_name") or lead.get("empresa") or "").strip().lower()
+
     success = 0
+    skipped = 0
     errors = 0
     for i, lead in enumerate(leads, 1):
         name = lead.get("business_name", "Desconocido")
+        key = _lead_key(lead)
+
+        if existing and key in existing:
+            skipped += 1
+            print(f"  - [{i}/{len(leads)}] {name} → ya existe en CRM (omitido)")
+            continue
+
         ok, msg = _crm_send_lead(cookie, lead)
         if ok:
             success += 1
@@ -153,7 +193,7 @@ def crm_send_batch(csv_path: str):
             print(f"  ✗ [{i}/{len(leads)}] {name} → {msg}")
 
     print(f"\n{'='*50}")
-    print(f"  Resultado: {success} enviados, {errors} errores")
+    print(f"  Resultado: {success} enviados, {skipped} omitidos (duplicados), {errors} errores")
     print(f"{'='*50}")
 
 

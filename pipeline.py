@@ -109,6 +109,11 @@ async def run_pipeline(
                         logger.error("Search failed: %s", e)
                         continue
 
+                    # Trim results to respect limit
+                    if limit:
+                        remaining = limit - len(all_leads)
+                        results = results[:remaining] if remaining > 0 else []
+
                     lead_batch = []
                     for place in results:
                         name = place.get("business_name", "")
@@ -176,6 +181,9 @@ async def run_pipeline(
                     industry_leads,
                     industry.get("name"),
                 )
+            if limit and len(all_leads) >= limit:
+                logger.info("Reached global limit of %d leads, stopping", limit)
+                break
 
         if pbar:
             pbar.close()
