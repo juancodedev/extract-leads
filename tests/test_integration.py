@@ -29,24 +29,41 @@ def _mock_context_manager(return_value):
     return ctx
 
 
-def _make_get_side_effect(places_search, places_detail=None, hunter=None):
+def _make_get_side_effect(places_search, places_detail=None, hunter=None, geocode_response=None):
     """Closure that returns the right mock HTTP response based on URL.
 
     Parameters
     ----------
     places_search : dict
-        Response body for the Places API textsearch endpoint.
+        Response body for the Places API nearbysearch endpoint.
     places_detail : dict | None
         Response body for the Places API details endpoint.
         Defaults to ``{"result": {}}``.
     hunter : dict | None
         Response body for the Hunter.io domain-search endpoint.
         Defaults to ``{"data": {"emails": []}}``.
+    geocode_response : dict | None
+        Response body for the Geocoding API endpoint.
+        Defaults to a valid Santiago viewport with ``"status": "OK"``.
     """
     if places_detail is None:
         places_detail = {"result": {}}
     if hunter is None:
         hunter = {"data": {"emails": []}}
+    if geocode_response is None:
+        geocode_response = {
+            "status": "OK",
+            "results": [
+                {
+                    "geometry": {
+                        "viewport": {
+                            "southwest": {"lat": -33.45, "lng": -70.65},
+                            "northeast": {"lat": -33.44, "lng": -70.64},
+                        }
+                    }
+                }
+            ],
+        }
 
     def _get(*args, **kwargs):
         url = args[0]
@@ -56,7 +73,9 @@ def _make_get_side_effect(places_search, places_detail=None, hunter=None):
         mock_resp.history = []
         mock_resp.headers = {}
 
-        if "textsearch" in url:
+        if "geocode" in url:
+            mock_resp.json = AsyncMock(return_value=geocode_response)
+        elif "nearbysearch" in url:
             mock_resp.json = AsyncMock(return_value=places_search)
         elif "details" in url:
             mock_resp.json = AsyncMock(return_value=places_detail)
@@ -198,21 +217,16 @@ async def test_deduplication_merges_similar_names(base_config):
 async def test_pipeline_respects_limit(base_config):
     """API returns many leads but limit=2 caps the total.
 
-    The real pipeline processes the full batch before checking the limit,
-    so we must ensure each Places API batch contains at most 1 lead.
-    We do this by returning 1 result per textsearch call and using a
-    side_effect that varies the name based on the location parameter.
+    Pipeline now calls search_with_grid(), which geocodes first then
+    uses Nearby Search per grid cell.  We use a tiny viewport so only
+    1 grid cell is generated per call, yielding 1 lead per combo.
+    A counter gives each lead a unique name so dedup doesn't merge them.
     """
-    # Build a side_effect that returns a unique lead per location.
-    location_names = {
-        "Santiago": "Barbería Alpha",
-        "Maipú": "Cafetería Beta",
-    }
+    lead_names = ["Barbería Alpha", "Cafetería Beta"]
+    lead_counter = [0]
 
     def get_side_effect(*args, **kwargs):
         url = args[0]
-        params = kwargs.get("params", {})
-        location = params.get("query", "")
 
         mock_resp = AsyncMock()
         mock_resp.status = 200
@@ -220,19 +234,38 @@ async def test_pipeline_respects_limit(base_config):
         mock_resp.history = []
         mock_resp.headers = {}
 
-        if "textsearch" in url:
-            # Determine which location this call targets
-            name = "Negocio Genérico"
-            for loc_key, loc_name in location_names.items():
-                if loc_key in location:
-                    name = loc_name
-                    break
+        if "geocode" in url:
+            # Tiny viewport → only 1 grid cell per search_with_grid call
+            mock_resp.json = AsyncMock(
+                return_value={
+                    "status": "OK",
+                    "results": [
+                        {
+                            "geometry": {
+                                "viewport": {
+                                    "southwest": {"lat": -33.45, "lng": -70.65},
+                                    "northeast": {"lat": -33.44, "lng": -70.64},
+                                }
+                            }
+                        }
+                    ],
+                }
+            )
+        elif "nearbysearch" in url:
+            idx = lead_counter[0]
+            lead_counter[0] += 1
+            name = lead_names[idx % len(lead_names)]
             mock_resp.json = AsyncMock(
                 return_value={
                     "status": "OK",
                     "results": [
                         _make_place(
-                            "px", name, f"Calle {loc_key}, {loc_key}", 4.5, 10, ["barber_shop"]
+                            f"p{idx}",
+                            name,
+                            "Calle Test, Santiago",
+                            4.5,
+                            10,
+                            ["barber_shop"],
                         ),
                     ],
                     "next_page_token": None,

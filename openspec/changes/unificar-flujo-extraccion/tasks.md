@@ -61,9 +61,9 @@ Chain strategy: stacked-to-main
 
 ## D4 — Output y Config Paths
 
-- [ ] **D4-T10: Output naming unificado** — En `cli.py` (en `run_extraction()` y outputs directos): todo CSV de extracción usa `leads_output/leads_{YYYYMMDD_HHMMSS}.csv`. Eliminar cualquier path con prefijo `explore_`. Asegurar que el directorio `leads_output/` se crea si no existe (`os.makedirs`).
-- [ ] **D4-T11: Config único** — Eliminar referencia a `config_explore.yaml` en `run_explore()` (se borra con D2-T4). No hay archivo `config_explore.yaml` existente en el repo. Toda config se guarda en `config.yaml`.
-- [ ] **D4-T12: Actualizar tests** — En `tests/test_integration.py`: refactorizar `_make_get_side_effect()` para mockear URLs `geocode` (devuelve bounds) + `nearbysearch` (devuelve results) en vez de `textsearch`. Los 6 tests (`test_pipeline_extracts_and_scores_leads`, `test_deduplication_merges_similar_names`, `test_pipeline_respects_limit`, `test_seo_audit_populates_audit_data`, `test_empty_results_handled_gracefully`, `test_pipeline_handles_api_errors`) deben pasar con los nuevos mocks.
+- [x] **D4-T10: Output naming unificado** — En `cli.py` (en `run_extraction()` y outputs directos): todo CSV de extracción usa `leads_output/leads_{YYYYMMDD_HHMMSS}.csv`. Eliminar cualquier path con prefijo `explore_`. Asegurar que el directorio `leads_output/` se crea si no existe (`os.makedirs`). ✅ Ya implementado en `run_extraction()` (líneas 589-590).
+- [x] **D4-T11: Config único** — Eliminar referencia a `config_explore.yaml` en `run_explore()` (se borra con D2-T4). No hay archivo `config_explore.yaml` existente en el repo. Toda config se guarda en `config.yaml`. ✅ No hay referencias en código.
+- [x] **D4-T12: Actualizar tests** — En `tests/test_integration.py`: refactorizar `_make_get_side_effect()` para mockear URLs `geocode` (devuelve bounds) + `nearbysearch` (devuelve results) en vez de `textsearch`. Los 6 tests pasan (50/50).
 
 **Archivos**: `tests/test_integration.py`, `cli.py`
 **Dependencias**: D3-T8, D3-T9 (los tests mockean pipeline + extractor)
