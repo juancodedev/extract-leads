@@ -226,6 +226,7 @@ def export_html(leads: list[dict], output_path: str):
             "city": lead.get("city", ""),
             "address": lead.get("address", ""),
             "website": lead.get("website", ""),
+            "instagram_handle": lead.get("instagram_handle", ""),
             "lead_score": lead.get("lead_score", 0),
             "lead_tier": lead.get("lead_tier", "COLD"),
             "scoring_notes": lead.get("scoring_notes", ""),

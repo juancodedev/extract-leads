@@ -301,6 +301,10 @@ async function sendToCRM(btn) {
       status: 'Nuevo'
     };
 
+    if (lead.instagram_handle) {
+      payload.instagramHandle = lead.instagram_handle;
+    }
+
     const url = '/api/send-lead';
     const resp = await fetch(url, {
       method: 'POST',

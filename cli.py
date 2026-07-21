@@ -97,6 +97,10 @@ def _crm_send_lead(cookie: str, lead: dict) -> tuple[bool, str]:
     if site:
         payload["sitio_web"] = site
 
+    ig = lead.get("instagram_handle", "") or ""
+    if ig:
+        payload["instagramHandle"] = ig
+
     url = f"{CRM_API_URL}/api/leads"
     data = json.dumps(payload).encode()
     req = Request(
