@@ -29,7 +29,7 @@ Out of scope: adding columns to the CRM (separate repository).
 
 - [x] T1 — CLI `--sort-by` + shared sort helper applied to CSV export and HTML report (route: delegated writer, 2+ non-trivial files)
 - [x] T2 — Clickable sortable headers in `templates/lead_report.html` (route: delegated writer)
-- [ ] T3 — Rating and review count in CRM `notas` (CLI `_crm_send_lead` and report `sendToCRM` JS) (route: delegated writer)
+- [x] T3 — Rating and review count in CRM `notas` (CLI `_crm_send_lead` and report `sendToCRM` JS) (route: delegated writer)
 
 ## Acceptance criteria
 
@@ -55,4 +55,10 @@ Out of scope: adding columns to the CRM (separate repository).
   JS exception: no JS test runner in repo. Structural RED/GREEN via Python-rendered report:
   RED `TestReportSortableColumns` (3 failed) → GREEN `67 passed`. Extra: `node --check` on the rendered
   scripts OK; ad-hoc node DOM-stub run confirmed desc/asc toggle with empty values last.
-  Limitation: on mobile (<768px) `thead` is hidden, so sorting is desktop-only; `--sort-by` still applies.
+  Limitation: on mobile (<768px) `thead` is hidden, so sorting is desktop-only; `--sort-by` still applies. Commit `30e944c`.
+- T3 (route: delegated writer). Extracted pure `cli._build_crm_notes(lead)`; appends
+  `Rating: X (N reseñas)` (singular `reseña` for 1; `Rating: X` when reviews missing/0) only when a numeric
+  rating exists. Report `leads_json` now carries `google_rating`/`review_count`; template `crmRatingNote`
+  mirrors the Python logic (report notes keep their existing trailing `scoring_notes`).
+  RED: `tests/test_crm_notes.py` collection ImportError (`_build_crm_notes`). GREEN: `74 passed`.
+  Extra: node eval of `crmRatingNote` matched Python outputs.

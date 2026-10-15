@@ -21,7 +21,7 @@ load_dotenv(".env")
 
 from analyzer import generate_audit_report  # noqa: E402
 from config_loader import get_default_industries, load_config  # noqa: E402
-from exporters import SORT_KEYS, export_csv, load_leads_from_csv, sort_leads  # noqa: E402
+from exporters import SORT_KEYS, export_csv, load_leads_from_csv, sort_leads, to_number  # noqa: E402
 from pipeline import run_pipeline  # noqa: E402
 from reporters import export_html, print_summary  # noqa: E402
 
@@ -71,6 +71,24 @@ def _crm_authenticate() -> str | None:
         return None
 
 
+def _build_crm_notes(lead: dict) -> str:
+    """Build the CRM `notas` text; appends Google rating (and review count) when a rating exists."""
+    notes = (
+        f"Lead Score: {lead.get('lead_score', 'N/A')} | "
+        f"Industria: {lead.get('industry', 'N/A')} | "
+        f"Ciudad: {lead.get('city', 'N/A')}"
+    )
+    rating = lead.get("google_rating")
+    if to_number(rating) is None:
+        return notes
+    rating_note = f"Rating: {str(rating).strip()}"
+    reviews = to_number(lead.get("review_count"))
+    if reviews is not None and reviews > 0:
+        count = int(reviews)
+        rating_note += f" ({count} {'reseña' if count == 1 else 'reseñas'})"
+    return f"{notes} | {rating_note}"
+
+
 def _crm_send_lead(cookie: str, lead: dict) -> tuple[bool, str]:
     """Send a single lead to the CRM using Supabase session cookie. Returns (success, message)."""
     email = lead.get("email") or ""
@@ -87,11 +105,7 @@ def _crm_send_lead(cookie: str, lead: dict) -> tuple[bool, str]:
         "nombre": lead.get("contact_person") or lead.get("nombre") or lead.get("business_name") or "",
         "telefono": lead.get("phone") or lead.get("telefono") or "",
         "direccion": lead.get("address") or lead.get("direccion") or "",
-        "notas": (
-            f"Lead Score: {lead.get('lead_score', 'N/A')} | "
-            f"Industria: {lead.get('industry', 'N/A')} | "
-            f"Ciudad: {lead.get('city', 'N/A')}"
-        ),
+        "notas": _build_crm_notes(lead),
         "status": "Nuevo",
     }
     if site:

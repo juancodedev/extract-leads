@@ -255,6 +255,7 @@ El proyecto puede enviar leads directamente a un CRM compatible (endpoint REST) 
 | `phone`            | `telefono`    |
 | `address`          | `direccion`   |
 | `website`          | `sitio_web`   |
+| `lead_score`, `industry`, `city`, `google_rating`, `review_count` | `notas` (ej: `Lead Score: 70 \| Industria: Barbería \| Ciudad: Ñuñoa \| Rating: 4.7 (312 reseñas)`) |
 | `scoring_notes`    | `notas`       |
 | `date_found`       | `fecha_captura` |
 | *(fijo)*           | `status: "Nuevo"` |

@@ -230,6 +230,8 @@ def export_html(leads: list[dict], output_path: str, sort_by: str = "score"):
             "address": lead.get("address", ""),
             "website": lead.get("website", ""),
             "instagram_handle": lead.get("instagram_handle", ""),
+            "google_rating": lead.get("google_rating", ""),
+            "review_count": lead.get("review_count", ""),
             "lead_score": lead.get("lead_score", 0),
             "lead_tier": lead.get("lead_tier", "COLD"),
             "scoring_notes": lead.get("scoring_notes", ""),
