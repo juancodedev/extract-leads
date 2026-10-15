@@ -32,8 +32,13 @@ class TestBuildCrmNotes:
             notes = _build_crm_notes(_lead(google_rating="4.2", review_count=reviews))
             assert notes == f"{BASE} | Rating: 4.2", reviews
 
+    def test_non_finite_review_count_is_ignored(self):
+        for reviews in ("inf", "Infinity", "-inf", float("inf")):
+            notes = _build_crm_notes(_lead(google_rating="4.2", review_count=reviews))
+            assert notes == f"{BASE} | Rating: 4.2", reviews
+
     def test_no_rating_keeps_notes_unchanged(self):
-        for rating in ("", None, "n/a"):
+        for rating in ("", None, "n/a", "inf"):
             notes = _build_crm_notes(_lead(google_rating=rating, review_count="312"))
             assert notes == BASE, rating
 

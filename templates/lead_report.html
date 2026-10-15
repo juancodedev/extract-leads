@@ -328,7 +328,7 @@ function leadDataByIndex(idx) {
 // Mirrors cli._build_crm_notes: "Rating: 4.7 (312 reseñas)", only when a rating exists.
 function crmRatingNote(lead) {
   const raw = lead.google_rating;
-  if (raw === undefined || raw === null || String(raw).trim() === '' || isNaN(parseFloat(raw))) return '';
+  if (raw === undefined || raw === null || String(raw).trim() === '' || !Number.isFinite(parseFloat(raw))) return '';
   let note = 'Rating: ' + String(raw).trim();
   const reviews = parseInt(lead.review_count, 10);
   if (!isNaN(reviews) && reviews > 0) {

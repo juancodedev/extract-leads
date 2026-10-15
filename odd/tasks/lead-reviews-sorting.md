@@ -66,5 +66,9 @@ Out of scope: adding columns to the CRM (separate repository).
   approved and acknowledged (lineage review-000e0be6084d6566). Non-blocking follow-ups:
   `_build_crm_notes` OverflowError on 'inf' review count (cli.py:85-88); JS/Python note parity drift on
   malformed input; client-side sort comparator not executed by tests; CSV ordering in run_extraction untested.
+- Follow-up fix (route: inline, 2 one-line edits + test): `exporters.to_number` now rejects non-finite
+  values (was only NaN), fixing `_build_crm_notes` OverflowError on 'inf' review counts; JS `crmRatingNote`
+  uses `Number.isFinite`. RED: `test_non_finite_review_count_is_ignored` OverflowError + 'inf' rating leaked
+  (2 failed). GREEN: `75 passed`. node check: 'Infinity' rating -> '' ; 'Infinity' reviews ignored.
 - Parent spot check: `python3 -m pytest -q` -> 74 passed.
 - Next step: optional follow-ups above; push/PR are user decisions.

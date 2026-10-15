@@ -19,7 +19,7 @@ _SORT_FIELDS = {
 
 
 def to_number(value) -> float | None:
-    """Coerce a lead value (number or CSV string) to float; None when missing or invalid."""
+    """Coerce a lead value (number or CSV string) to float; None when missing, invalid or non-finite."""
     if value is None or isinstance(value, bool):
         return None
     if isinstance(value, (int, float)):
@@ -32,7 +32,7 @@ def to_number(value) -> float | None:
             number = float(text)
         except ValueError:
             return None
-    return None if math.isnan(number) else number
+    return number if math.isfinite(number) else None
 
 
 def sort_value(value) -> str:
