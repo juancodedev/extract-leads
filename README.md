@@ -111,6 +111,9 @@ python cli.py --dry-run
 # Generar reporte HTML desde CSV existente
 python cli.py --from-csv leads.csv --html reporte.html
 
+# Reporte ordenado por cantidad de reseñas (o rating)
+python cli.py --from-csv leads.csv --html reporte.html --sort-by reviews
+
 # Auditar websites desde CSV
 python cli.py --from-csv leads.csv --audit auditoria.html
 
@@ -138,6 +141,8 @@ python cli.py --crm-send leads_output/leads.csv
   --from-csv FILE     CSV de entrada para --html o --audit
   --crm-send FILE     Enviar leads en batch al CRM desde CSV
   --serve [FILE]      Servir reporte HTML con proxy CRM (usa el más reciente si no se pasa ruta)
+  --sort-by {score,rating,reviews}
+                      Orden del CSV y el reporte HTML, descendente; sin dato al final (default: score)
 ```
 
 ## Objetivos de scoring (`--goal`)

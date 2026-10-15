@@ -21,7 +21,7 @@ load_dotenv(".env")
 
 from analyzer import generate_audit_report  # noqa: E402
 from config_loader import get_default_industries, load_config  # noqa: E402
-from exporters import export_csv, load_leads_from_csv  # noqa: E402
+from exporters import SORT_KEYS, export_csv, load_leads_from_csv, sort_leads  # noqa: E402
 from pipeline import run_pipeline  # noqa: E402
 from reporters import export_html, print_summary  # noqa: E402
 
@@ -332,6 +332,14 @@ async def main():
         metavar="HTML",
         help="Serve a report HTML with CRM integration (uses latest if no path given)",
     )
+    parser.add_argument(
+        "--sort-by",
+        choices=SORT_KEYS,
+        default="score",
+        help="Orden de los leads en el CSV y el reporte HTML: score (Lead Score), "
+        "rating (calificación Google) o reviews (cantidad de reseñas). "
+        "Siempre descendente; los leads sin dato van al final (default: score)",
+    )
     args = parser.parse_args()
 
     # CRM send mode (batch)
@@ -370,7 +378,7 @@ async def main():
     # HTML report mode from existing CSV
     if args.from_csv and args.html:
         leads = load_leads_from_csv(args.from_csv)
-        export_html(leads, args.html)
+        export_html(leads, args.html, sort_by=args.sort_by)
         print_summary(leads)
         return
 
@@ -383,7 +391,7 @@ async def main():
     # Unified extraction flow (default: python cli.py without special flags)
     api_key = args.google_key or os.environ.get("GOOGLE_PLACES_API_KEY", "")
     hunter_key = args.hunter_key or os.environ.get("HUNTER_API_KEY", "")
-    await run_extraction(api_key, hunter_key)
+    await run_extraction(api_key, hunter_key, sort_by=args.sort_by)
 
 
 # ── Shared UI Helpers ──
@@ -471,7 +479,7 @@ def _validate_overlap(prompt: str = "Superposición entre celdas % (default: 20)
 # ── Unified Extraction Flow ──
 
 
-async def run_extraction(api_key: str = "", hunter_key: str = ""):
+async def run_extraction(api_key: str = "", hunter_key: str = "", sort_by: str = "score"):
     """Unified interactive flow: input → geocoding → grid → pipeline → post-pipeline."""
     print("\n" + "=" * 55)
     print(" 🚀 PROSPECTING ENGINE & BUSINESS AUDITOR")
@@ -630,6 +638,7 @@ async def run_extraction(api_key: str = "", hunter_key: str = ""):
         return
 
     # Output
+    leads = sort_leads(leads, by=sort_by)
     os.makedirs("leads_output", exist_ok=True)
     output = f"leads_output/leads_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
     export_csv(leads, output)
@@ -639,7 +648,7 @@ async def run_extraction(api_key: str = "", hunter_key: str = ""):
     html_choice = input("\n¿Generar reporte HTML? (s/n, default: s): ").strip().lower()
     if html_choice != "n":
         html_output = output.replace(".csv", ".html")
-        export_html(leads, html_output)
+        export_html(leads, html_output, sort_by=sort_by)
         print(f"  📄 HTML: {html_output}")
 
     # Post-pipeline: Audit websites

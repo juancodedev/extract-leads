@@ -1,0 +1,51 @@
+# Feature: lead-reviews-sorting
+
+## Objective
+
+Make Google rating and review count first-class sortable fields for leads.
+
+## Problem
+
+`google_rating` and `review_count` are already extracted (`extractor.py`, `pipeline.py`) and exported to CSV,
+but the HTML report is fixed-sorted by `lead_score` (`reporters.py:68`), there is no CLI sort option,
+and the CRM payload drops both values.
+
+## Scope
+
+- HTML report: clickable column headers to sort the leads table client-side (Rating, Reviews, Score, ...).
+- CLI: `--sort-by {score,rating,reviews}` that orders the CSV and the HTML report.
+- CRM: include rating and review count in the `notas` field (CRM API has no dedicated columns —
+  verified against `https://crm.juancode.dev/api/docs/openapi.json`, `CreateLeadRequest`).
+
+Out of scope: adding columns to the CRM (separate repository).
+
+## Constraints
+
+- Missing ratings/reviews sort last, regardless of direction.
+- CSV-loaded leads have string values; sorting must coerce numbers safely.
+- Default behavior unchanged (`score`, descending).
+
+## Tasks
+
+- [x] T1 — CLI `--sort-by` + shared sort helper applied to CSV export and HTML report (route: delegated writer, 2+ non-trivial files)
+- [ ] T2 — Clickable sortable headers in `templates/lead_report.html` (route: delegated writer)
+- [ ] T3 — Rating and review count in CRM `notas` (CLI `_crm_send_lead` and report `sendToCRM` JS) (route: delegated writer)
+
+## Acceptance criteria
+
+- `python cli.py ... --sort-by reviews` produces CSV and HTML ordered by review count, descending.
+- Clicking Rating/Reviews/Score headers in the report toggles ascending/descending order.
+- CRM leads show `Rating: X (N reseñas)` in their notes.
+
+## Checks
+
+- `python3 -m pytest -q` (baseline: 50 passed)
+
+## Progress
+
+- Branch: `feat/lead-reviews-sorting`
+- T1 (route: delegated writer). Helper `sort_leads`/`SORT_KEYS` placed in `exporters.py` (already in
+  `pyproject.toml` py-modules; a new module would break non-editable installs). `--sort-by` applied to the
+  interactive extraction CSV + HTML and the `--from-csv --html` path; `export_html(..., sort_by="score")`.
+  RED: `tests/test_sorting.py` collection error `ModuleNotFoundError: No module named 'sorting'`
+  (later relocated to `exporters`). GREEN: `64 passed`. `cli.py --help` lists `--sort-by`.

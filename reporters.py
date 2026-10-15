@@ -18,6 +18,7 @@ from analyzer import (
     TECH_MAX_SCORE,
     TECH_YELLOW_THRESHOLD,
 )
+from exporters import sort_leads
 
 TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "templates")
 jinja_env = Environment(loader=FileSystemLoader(TEMPLATE_DIR), autoescape=True)
@@ -62,10 +63,9 @@ def print_summary(leads: list[dict]):
     print()
 
 
-def export_html(leads: list[dict], output_path: str):
-    """Generate a clean HTML report from leads data."""
-    # Sort leads by score descending
-    leads = sorted(leads, key=lambda x: x.get("lead_score", 0), reverse=True)
+def export_html(leads: list[dict], output_path: str, sort_by: str = "score"):
+    """Generate a clean HTML report from leads data, ordered by `sort_by` (descending)."""
+    leads = sort_leads(leads, by=sort_by)
 
     tiers_count: dict[str, int] = {}
     industries_count: dict[str, int] = {}
