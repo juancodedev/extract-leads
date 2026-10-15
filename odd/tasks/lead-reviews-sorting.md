@@ -61,4 +61,5 @@ Out of scope: adding columns to the CRM (separate repository).
   rating exists. Report `leads_json` now carries `google_rating`/`review_count`; template `crmRatingNote`
   mirrors the Python logic (report notes keep their existing trailing `scoring_notes`).
   RED: `tests/test_crm_notes.py` collection ImportError (`_build_crm_notes`). GREEN: `74 passed`.
-  Extra: node eval of `crmRatingNote` matched Python outputs.
+  Extra: node eval of `crmRatingNote` matched Python outputs. Commit `71b9838`.
+- Next step: parent review/assessment of the three work-unit commits; push/PR are user decisions.
