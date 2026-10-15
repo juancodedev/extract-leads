@@ -28,7 +28,7 @@ Out of scope: adding columns to the CRM (separate repository).
 ## Tasks
 
 - [x] T1 — CLI `--sort-by` + shared sort helper applied to CSV export and HTML report (route: delegated writer, 2+ non-trivial files)
-- [ ] T2 — Clickable sortable headers in `templates/lead_report.html` (route: delegated writer)
+- [x] T2 — Clickable sortable headers in `templates/lead_report.html` (route: delegated writer)
 - [ ] T3 — Rating and review count in CRM `notas` (CLI `_crm_send_lead` and report `sendToCRM` JS) (route: delegated writer)
 
 ## Acceptance criteria
@@ -48,4 +48,11 @@ Out of scope: adding columns to the CRM (separate repository).
   `pyproject.toml` py-modules; a new module would break non-editable installs). `--sort-by` applied to the
   interactive extraction CSV + HTML and the `--from-csv --html` path; `export_html(..., sort_by="score")`.
   RED: `tests/test_sorting.py` collection error `ModuleNotFoundError: No module named 'sorting'`
-  (later relocated to `exporters`). GREEN: `64 passed`. `cli.py --help` lists `--sort-by`.
+  (later relocated to `exporters`). GREEN: `64 passed`. `cli.py --help` lists `--sort-by`. Commit `5e60d31`.
+- T2 (route: delegated writer). Sortable headers (#, Negocio, Ciudad, Rating, Reviews, Score) with
+  `aria-sort` + CSS ▲/▼ indicator, keyboard (Enter/Space); cells carry `data-sort` (numeric via
+  `exporters.sort_value`, '' when missing); sort script lives outside `{% if crm_enabled %}`.
+  JS exception: no JS test runner in repo. Structural RED/GREEN via Python-rendered report:
+  RED `TestReportSortableColumns` (3 failed) → GREEN `67 passed`. Extra: `node --check` on the rendered
+  scripts OK; ad-hoc node DOM-stub run confirmed desc/asc toggle with empty values last.
+  Limitation: on mobile (<768px) `thead` is hidden, so sorting is desktop-only; `--sort-by` still applies.

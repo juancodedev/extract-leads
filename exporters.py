@@ -18,7 +18,7 @@ _SORT_FIELDS = {
 }
 
 
-def _to_number(value) -> float | None:
+def to_number(value) -> float | None:
     """Coerce a lead value (number or CSV string) to float; None when missing or invalid."""
     if value is None or isinstance(value, bool):
         return None
@@ -35,6 +35,14 @@ def _to_number(value) -> float | None:
     return None if math.isnan(number) else number
 
 
+def sort_value(value) -> str:
+    """Render a lead value as a plain numeric string for `data-sort` attributes ('' when missing)."""
+    number = to_number(value)
+    if number is None:
+        return ""
+    return str(int(number)) if number.is_integer() else repr(number)
+
+
 def sort_leads(leads: list[dict], by: str = "score") -> list[dict]:
     """Return a new list sorted descending by `by`.
 
@@ -47,8 +55,8 @@ def sort_leads(leads: list[dict], by: str = "score") -> list[dict]:
     field = _SORT_FIELDS[by]
 
     def key(lead: dict) -> tuple:
-        value = _to_number(lead.get(field))
-        score = _to_number(lead.get("lead_score")) or 0.0
+        value = to_number(lead.get(field))
+        score = to_number(lead.get("lead_score")) or 0.0
         missing = value is None
         return (missing, -(value or 0.0), -score)
 

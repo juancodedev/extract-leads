@@ -128,3 +128,51 @@ class TestCliSortByArg:
             cwd=repo_root,
         )
         assert "--sort-by" in result.stdout
+
+
+class TestReportSortableColumns:
+    """Structural checks for client-side sorting (no JS runner in this repo)."""
+
+    def _render(self, tmp_path, monkeypatch, crm: bool) -> str:
+        from reporters import export_html
+
+        for var in ("CRM_API_URL", "CRM_API_EMAIL", "CRM_API_PASSWORD"):
+            if crm:
+                monkeypatch.setenv(var, "x")
+            else:
+                monkeypatch.delenv(var, raising=False)
+        leads = [
+            {
+                "business_name": "Rated",
+                "city": "Ñuñoa",
+                "google_rating": "4.7",
+                "review_count": "312",
+                "lead_score": 70,
+                "lead_tier": "WARM",
+            },
+            {"business_name": "Unrated", "city": "Maipú", "lead_score": 40, "lead_tier": "COOL"},
+        ]
+        out = tmp_path / "r.html"
+        export_html(leads, str(out))
+        return out.read_text(encoding="utf-8")
+
+    def test_numeric_cells_carry_data_sort(self, tmp_path, monkeypatch):
+        html = self._render(tmp_path, monkeypatch, crm=False)
+        assert 'data-label="Rating" data-sort="4.7"' in html
+        assert 'data-label="Reviews" data-sort="312"' in html
+        assert 'data-label="Score" data-sort="70"' in html
+        # Missing values render an empty sort key so JS can push them last.
+        assert 'data-label="Rating" data-sort=""' in html
+        assert 'data-label="Reviews" data-sort=""' in html
+
+    def test_headers_are_sortable(self, tmp_path, monkeypatch):
+        html = self._render(tmp_path, monkeypatch, crm=False)
+        for key in ("num", "name", "city", "rating", "reviews", "score"):
+            assert f'data-sort-key="{key}"' in html
+        assert 'id="leads-table"' in html
+        assert "function sortLeadsTable" in html
+
+    def test_sort_script_present_with_crm_enabled(self, tmp_path, monkeypatch):
+        html = self._render(tmp_path, monkeypatch, crm=True)
+        assert "function sortLeadsTable" in html
+        assert 'data-lead-index="0"' in html

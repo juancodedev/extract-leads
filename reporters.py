@@ -18,7 +18,7 @@ from analyzer import (
     TECH_MAX_SCORE,
     TECH_YELLOW_THRESHOLD,
 )
-from exporters import sort_leads
+from exporters import sort_leads, sort_value
 
 TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "templates")
 jinja_env = Environment(loader=FileSystemLoader(TEMPLATE_DIR), autoescape=True)
@@ -151,6 +151,9 @@ def export_html(leads: list[dict], output_path: str, sort_by: str = "score"):
                 "booking_badge": booking_badge,
                 "rating": str(rating or ""),
                 "reviews": str(reviews or ""),
+                "rating_sort": sort_value(rating),
+                "reviews_sort": sort_value(reviews),
+                "score_sort": sort_value(score),
                 "tier": tier,
                 "tier_color": color,
                 "tier_bg": bg,

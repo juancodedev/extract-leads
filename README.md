@@ -227,6 +227,7 @@ enrichment:
 - Top 5 Oportunidades con scoring notes y scripts de contacto personalizados.
 - Distribución por industria y tier.
 - Tabla completa con Material Icons clickeables (teléfono, WhatsApp, web, Instagram, Facebook).
+- Columnas ordenables con un click (#, Negocio, Ciudad, Rating, Reviews, Score): alterna ▲/▼ y los leads sin dato quedan al final.
 - Badges de auditoría (SEO Auditado, Meta Ads Ready, IG-to-Web Ready).
 
 ## Integración con CRM
