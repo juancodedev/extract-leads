@@ -62,4 +62,9 @@ Out of scope: adding columns to the CRM (separate repository).
   mirrors the Python logic (report notes keep their existing trailing `scoring_notes`).
   RED: `tests/test_crm_notes.py` collection ImportError (`_build_crm_notes`). GREEN: `74 passed`.
   Extra: node eval of `crmRatingNote` matched Python outputs. Commit `71b9838`.
-- Next step: parent review/assessment of the three work-unit commits; push/PR are user decisions.
+- Review: range master..459252b assessed medium (slice_budget_reached); consent granted; review-reliability
+  approved and acknowledged (lineage review-000e0be6084d6566). Non-blocking follow-ups:
+  `_build_crm_notes` OverflowError on 'inf' review count (cli.py:85-88); JS/Python note parity drift on
+  malformed input; client-side sort comparator not executed by tests; CSV ordering in run_extraction untested.
+- Parent spot check: `python3 -m pytest -q` -> 74 passed.
+- Next step: optional follow-ups above; push/PR are user decisions.
