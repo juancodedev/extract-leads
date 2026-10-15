@@ -12,3 +12,6 @@ leads_output.zip
 files.zip
 .venv/
 venv/
+
+# Machine-specific generated skill registry
+.atl/

@@ -18,6 +18,7 @@ from analyzer import (
     TECH_MAX_SCORE,
     TECH_YELLOW_THRESHOLD,
 )
+from exporters import sort_leads, sort_value
 
 TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "templates")
 jinja_env = Environment(loader=FileSystemLoader(TEMPLATE_DIR), autoescape=True)
@@ -62,10 +63,9 @@ def print_summary(leads: list[dict]):
     print()
 
 
-def export_html(leads: list[dict], output_path: str):
-    """Generate a clean HTML report from leads data."""
-    # Sort leads by score descending
-    leads = sorted(leads, key=lambda x: x.get("lead_score", 0), reverse=True)
+def export_html(leads: list[dict], output_path: str, sort_by: str = "score"):
+    """Generate a clean HTML report from leads data, ordered by `sort_by` (descending)."""
+    leads = sort_leads(leads, by=sort_by)
 
     tiers_count: dict[str, int] = {}
     industries_count: dict[str, int] = {}
@@ -151,6 +151,9 @@ def export_html(leads: list[dict], output_path: str):
                 "booking_badge": booking_badge,
                 "rating": str(rating or ""),
                 "reviews": str(reviews or ""),
+                "rating_sort": sort_value(rating),
+                "reviews_sort": sort_value(reviews),
+                "score_sort": sort_value(score),
                 "tier": tier,
                 "tier_color": color,
                 "tier_bg": bg,
@@ -227,6 +230,8 @@ def export_html(leads: list[dict], output_path: str):
             "address": lead.get("address", ""),
             "website": lead.get("website", ""),
             "instagram_handle": lead.get("instagram_handle", ""),
+            "google_rating": lead.get("google_rating", ""),
+            "review_count": lead.get("review_count", ""),
             "lead_score": lead.get("lead_score", 0),
             "lead_tier": lead.get("lead_tier", "COLD"),
             "scoring_notes": lead.get("scoring_notes", ""),

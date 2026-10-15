@@ -111,6 +111,9 @@ python cli.py --dry-run
 # Generar reporte HTML desde CSV existente
 python cli.py --from-csv leads.csv --html reporte.html
 
+# Reporte ordenado por cantidad de reseñas (o rating)
+python cli.py --from-csv leads.csv --html reporte.html --sort-by reviews
+
 # Auditar websites desde CSV
 python cli.py --from-csv leads.csv --audit auditoria.html
 
@@ -138,6 +141,8 @@ python cli.py --crm-send leads_output/leads.csv
   --from-csv FILE     CSV de entrada para --html o --audit
   --crm-send FILE     Enviar leads en batch al CRM desde CSV
   --serve [FILE]      Servir reporte HTML con proxy CRM (usa el más reciente si no se pasa ruta)
+  --sort-by {score,rating,reviews}
+                      Orden del CSV y el reporte HTML, descendente; sin dato al final (default: score)
 ```
 
 ## Objetivos de scoring (`--goal`)
@@ -222,6 +227,7 @@ enrichment:
 - Top 5 Oportunidades con scoring notes y scripts de contacto personalizados.
 - Distribución por industria y tier.
 - Tabla completa con Material Icons clickeables (teléfono, WhatsApp, web, Instagram, Facebook).
+- Columnas ordenables con un click (#, Negocio, Ciudad, Rating, Reviews, Score): alterna ▲/▼ y los leads sin dato quedan al final.
 - Badges de auditoría (SEO Auditado, Meta Ads Ready, IG-to-Web Ready).
 
 ## Integración con CRM
@@ -249,6 +255,7 @@ El proyecto puede enviar leads directamente a un CRM compatible (endpoint REST) 
 | `phone`            | `telefono`    |
 | `address`          | `direccion`   |
 | `website`          | `sitio_web`   |
+| `lead_score`, `industry`, `city`, `google_rating`, `review_count` | `notas` (ej: `Lead Score: 70 \| Industria: Barbería \| Ciudad: Ñuñoa \| Rating: 4.7 (312 reseñas)`) |
 | `scoring_notes`    | `notas`       |
 | `date_found`       | `fecha_captura` |
 | *(fijo)*           | `status: "Nuevo"` |
