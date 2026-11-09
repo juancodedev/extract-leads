@@ -12,7 +12,6 @@ description: >
   - "instagram to web", "brand website", "convert instagram"
   - "lead report", "lead generation", "analyze business"
   - "explore city", "grid search", "nearby search" (grid-based city exploration)
-  - "find instagram", "instagram search", "buscar instagram" (proactive IG enrichment)
 ---
 
 # Lead Extractor & Business Auditor Skill
@@ -26,7 +25,6 @@ Advanced lead generation and digital auditing. Searches Google Places, enriches 
 - **Grid Explore** (`--explore`): City-wide search using Nearby Search + geocoding. Divides a city into overlapping grid cells and searches each one. Much higher coverage than Text Search.
 - **Manual Search**: Deep search for specific niches using WebSearch/WebFetch.
 - **Enrichment**: WhatsApp, Social Media, and Hunter.io email detection.
-- **Proactive Instagram Search**: If a business has no Instagram on its website, searches Instagram's public API by business name + city to find its profile.
 - **Scoring**: 0-100 opportunity score based on digital gaps.
 
 ### 2. Specialized Audits (HTML Reports)
@@ -107,7 +105,6 @@ python cli.py --crm-send leads.csv  # Batch send to CRM
 - `cli.py`: Entry point (interactive, explore, CRM send/serve, audit).
 - `pipeline.py`: Orchestrator — connects extractor → enricher → scorer → audits.
 - `extractor.py`: Google Places API (Text Search + Nearby Search + geocoding + grid).
-- `instagram_search.py`: Proactive Instagram search via public topsearch API.
 - `enricher.py`: Data enrichment (Social/Email/Booking/WhatsApp).
 - `lead_scorer.py`: Scoring engine (9 goal types).
 - `analyzer.py`: Technical website analysis.
@@ -253,7 +250,6 @@ lead-extractor/
 ├── cli.py                ← Entry point (interactive, explore, audit, CRM)
 ├── pipeline.py           ← Orchestrator (extract → enrich → score → audit)
 ├── extractor.py          ← Google Places API (Text + Nearby + geocoding + grid)
-├── instagram_search.py   ← Proactive Instagram search (public topsearch API)
 ├── enricher.py           ← Social/WhatsApp/Booking/Email detection
 ├── lead_scorer.py        ← Scoring engine (9 goals)
 ├── analyzer.py           ← Website audit (SEO, images, booking, mobile, CMS)

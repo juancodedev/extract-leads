@@ -19,7 +19,6 @@ from tqdm import tqdm
 from analyzer import WebsiteAnalyzer
 from enricher import Enricher
 from extractor import PlacesExtractor
-from instagram_search import search_instagram_profile
 from lead_scorer import LeadScorer
 
 logging.basicConfig(
@@ -151,8 +150,7 @@ async def run_pipeline(
                     # Enrich all leads in this batch in parallel
                     if lead_batch:
                         enrich_tasks = [
-                            _enrich_lead(lead, enricher, session, hunter_key)
-                            for lead in lead_batch
+                            _enrich_lead(lead, enricher, hunter_key) for lead in lead_batch
                         ]
                         enriched = await asyncio.gather(*enrich_tasks, return_exceptions=True)
 
@@ -272,10 +270,9 @@ def _normalize_social_as_website(lead: dict) -> dict | None:
 async def _enrich_lead(
     lead: dict,
     enricher: "Enricher",
-    session: aiohttp.ClientSession,
     hunter_key: str,
 ) -> dict:
-    """Enrich a single lead with email + website scan + proactive Instagram search."""
+    """Enrich a single lead with email + website scan."""
     updates = {}
 
     # ── Social URL normalisation ──
@@ -285,7 +282,6 @@ async def _enrich_lead(
     if social_fix is not None:
         updates.update(social_fix)
         # Don't scan or email-hunt social profiles — they're not real websites.
-        # Still run the proactive Instagram search below if needed.
     else:
         if lead["website"] and hunter_key:
             domain = Enricher.extract_domain(lead["website"])
@@ -303,16 +299,6 @@ async def _enrich_lead(
             updates["whatsapp_link"] = scan.get("whatsapp") or ""
             booking: list[str] = scan.get("booking_links", [])
             updates["booking_links"] = " | ".join(booking) if booking else ""
-
-    # Proactive Instagram search: if we didn't find one on the website, search by name + city
-    if not updates.get("instagram_handle"):
-        ig_handle = await search_instagram_profile(
-            session,
-            lead.get("business_name", ""),
-            location=lead.get("city", ""),
-        )
-        if ig_handle:
-            updates["instagram_handle"] = ig_handle
 
     # WhatsApp fallback from phone
     if not updates.get("whatsapp_link") and lead.get("phone"):

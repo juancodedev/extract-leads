@@ -17,7 +17,6 @@ Motor de prospección inteligente y auditoría digital. Busca, enriquece, califi
 - **Reporte responsivo** — En desktop tabla completa; en mobile cada lead se convierte en card vertical con label + valor.
 - **Barra de progreso** — `tqdm` en pipeline de extracción y auditoría.
 - **Exploración por grilla (Nearby Search)** — Divide la ciudad en una grilla de celdas superpuestas y busca en cada una con Nearby Search. Mucho más cobertura que Text Search. Si el geocoding falla, hace fallback automático a Text Search.
-- **Búsqueda proactiva de Instagram** — Si un negocio no tiene Instagram en su web, busca automáticamente en Instagram por nombre + ciudad usando la API pública de topsearch.
 - **Geocoding + Nearby Search** — Convierte nombre de ciudad en coordenadas y busca por radio, generando grillas de hasta 50 celdas con 20% de superposición.
 - **Flujo interactivo unificado** — Un solo entry point sin flags. Menú guiado que construye la configuración sin tocar YAML.
 
@@ -296,7 +295,6 @@ extract-leads/
 ├── cli.py                  # CLI entry point — flujo interactivo unificado + CRM
 ├── pipeline.py             # Orquestador async principal
 ├── extractor.py            # Google Places API (async + retry + geocoding + grid search)
-├── instagram_search.py     # Búsqueda proactiva de Instagram (API pública topsearch)
 ├── enricher.py             # Email (Hunter.io) + social/booking scan
 ├── lead_scorer.py          # Scoring engine con flags de oportunidad
 ├── analyzer.py             # Website analyzer (SEO, imágenes, contacto)
